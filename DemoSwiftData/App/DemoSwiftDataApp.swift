@@ -9,9 +9,22 @@ import SwiftUI
 
 @main
 struct DemoSwiftDataApp: App {
+    
+    private let persistence: PersistenceDependencies
+
+    init() {
+        do {
+            persistence = try PersistenceFactory.makeProduction()
+        } catch {
+            fatalError("Не удалось создать хранилище: \(error)")
+        }
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView(
+                store: persistence.shoppingStore
+            )
         }
     }
 }

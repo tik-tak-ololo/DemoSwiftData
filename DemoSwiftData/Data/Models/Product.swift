@@ -11,8 +11,8 @@ import SwiftData
 @Model
 final class Product {
     @Attribute(.unique) var id: UUID
-    @Attribute(.unique) var normalizedName: String
-    var name: String
+    @Attribute(.unique) private(set) var normalizedName: String
+    private(set) var name: String
     var symbolName: String
 
     @Relationship(deleteRule: .cascade, inverse: \ShoppingListItem.product)
@@ -33,7 +33,12 @@ final class Product {
     static func normalize(_ name: String) -> String {
         name
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-            .lowercased()
+            .precomposedStringWithCanonicalMapping
+            .lowercased(with: Locale(identifier: "en_US_POSIX"))
+    }
+
+    func rename(to name: String) {
+        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        normalizedName = Self.normalize(name)
     }
 }

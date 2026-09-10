@@ -1,14 +1,18 @@
 //
-//  ContentView.swift
+//  ShoppingListsView.swift
 //  DemoSwiftData
 //
-//  Created by Сергей Хмелёв on 10.09.2026.
+//  Created by Сергей Хмелёв on 11.09.2026.
 //
 
 import SwiftUI
 
-struct ContentView: View {
+struct ShoppingListsView: View {
+    let observed: ShoppingListsObserved
+
     var body: some View {
+        @Bindable var observed = observed
+
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
@@ -17,8 +21,6 @@ struct ContentView: View {
         }
         .padding()
     }
-}
 
-#Preview {
-    ContentView()
+
 }
