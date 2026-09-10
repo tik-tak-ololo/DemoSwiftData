@@ -8,22 +8,12 @@
 import SwiftUI
 
 struct RootView: View {
-    @State private var observed: ShoppingListsObserved
 
     init(store: any ShoppingStoreProtocol) {
-        _observed = State(
-            initialValue: ShoppingListsObserved(
-                store: store
-            )
-        )
+
     }
 
     var body: some View {
-        ShoppingListsView(observed: observed)
+        ShoppingListsView()
     }
-}
-
-#Preview {
-    let persistence = PersistenceFactory.makePreview()
-    RootView(store: persistence.shoppingStore)
 }

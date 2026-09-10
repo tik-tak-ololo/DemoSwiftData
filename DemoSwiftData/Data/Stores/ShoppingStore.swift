@@ -11,6 +11,7 @@ import SwiftData
 enum ShoppingStoreError: LocalizedError {
     case emptyListName
     case emptyProductName
+    case duplicateProductName
     case invalidQuantity
 
     var errorDescription: String? {
@@ -19,6 +20,8 @@ enum ShoppingStoreError: LocalizedError {
             "Введите название списка."
         case .emptyProductName:
             "Введите название товара."
+        case .duplicateProductName:
+            "Товар с таким названием уже существует."
         case .invalidQuantity:
             "Количество должно быть больше нуля."
         }
@@ -30,13 +33,14 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     private let modelContainer: ModelContainer
     private let modelContext: ModelContext
 
-    private(set) var shoppingLists: [ShoppingList]
-
-    init(modelContainer: ModelContainer) throws {
+    init(modelContainer: ModelContainer) {
         let modelContext = modelContainer.mainContext
         self.modelContainer = modelContainer
         self.modelContext = modelContext
-        shoppingLists = try modelContext.fetch(Self.shoppingListsDescriptor)
+    }
+
+    func fetchShoppingLists() throws -> [ShoppingList] {
+        try modelContext.fetch(Self.shoppingListsDescriptor)
     }
 
     @discardableResult
@@ -49,15 +53,28 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         let shoppingList = ShoppingList(name: trimmedName)
         modelContext.insert(shoppingList)
         try saveChanges()
-        shoppingLists.append(shoppingList)
-        sortShoppingLists()
         return shoppingList
     }
     
     func deleteList(_ shoppingList: ShoppingList) throws {
         modelContext.delete(shoppingList)
         try saveChanges()
-        shoppingLists.removeAll { $0.id == shoppingList.id }
+    }
+
+    func renameProduct(_ product: Product, to name: String) throws {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            throw ShoppingStoreError.emptyProductName
+        }
+
+        let normalizedName = Product.normalize(trimmedName)
+        if normalizedName != product.normalizedName,
+           try findProduct(normalizedName: normalizedName) != nil {
+            throw ShoppingStoreError.duplicateProductName
+        }
+
+        product.rename(to: trimmedName)
+        try saveChanges()
     }
 
     func addItem(
@@ -111,15 +128,12 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         }) {
             existingItem.quantity += quantity
             existingItem.isPurchased = existingItem.isPurchased && item.isPurchased
-            existingItem.product?.rename(to: trimmedName)
             modelContext.delete(item)
             try saveChanges()
             return
         }
 
-        if item.product?.normalizedName == normalizedName {
-            item.product?.rename(to: trimmedName)
-        } else {
+        if item.product?.normalizedName != normalizedName {
             item.product = try findOrCreateProduct(named: trimmedName)
         }
         item.quantity = quantity
@@ -144,9 +158,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     func applyInitialDemoDataIfEmpty(_ data: DemoData) throws {
-        guard shoppingLists.isEmpty else { return }
-
-        var insertedLists: [ShoppingList] = []
+        guard try fetchShoppingLists().isEmpty else { return }
 
         try performTransaction {
             var productsByNormalizedName: [String: Product] = [:]
@@ -154,7 +166,6 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
             for listData in data.lists {
                 let shoppingList = ShoppingList(name: listData.name)
                 modelContext.insert(shoppingList)
-                insertedLists.append(shoppingList)
 
                 for itemData in listData.items {
                     let normalizedName = Product.normalize(itemData.name)
@@ -176,9 +187,6 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
                 }
             }
         }
-
-        shoppingLists.append(contentsOf: insertedLists)
-        sortShoppingLists()
     }
 
     private static var shoppingListsDescriptor: FetchDescriptor<ShoppingList> {
@@ -187,25 +195,25 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         )
     }
 
-    private func sortShoppingLists() {
-        shoppingLists.sort { $0.createdAt > $1.createdAt }
-    }
-
     private func findOrCreateProduct(named name: String) throws -> Product {
         let normalizedName = Product.normalize(name)
-        let predicate = #Predicate<Product> { product in
-            product.normalizedName == normalizedName
-        }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-
-        if let existingProduct = try modelContext.fetch(descriptor).first {
+        if let existingProduct = try findProduct(normalizedName: normalizedName) {
             return existingProduct
         }
 
         let product = Product(name: name)
         modelContext.insert(product)
         return product
+    }
+
+    private func findProduct(normalizedName: String) throws -> Product? {
+        let predicate = #Predicate<Product> { product in
+            product.normalizedName == normalizedName
+        }
+        var descriptor = FetchDescriptor(predicate: predicate)
+        descriptor.fetchLimit = 1
+
+        return try modelContext.fetch(descriptor).first
     }
 
     private func saveChanges() throws {

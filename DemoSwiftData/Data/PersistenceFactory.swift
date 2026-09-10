@@ -57,7 +57,7 @@ enum PersistenceFactory {
             for: schema,
             configurations: configuration
         )
-        let store = try ShoppingStore(modelContainer: container)
+        let store = ShoppingStore(modelContainer: container)
         try DemoDataSeeder(
             store: store,
             userDefaults: demoDataUserDefaults

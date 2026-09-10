@@ -11,7 +11,6 @@ import Observation
 @MainActor
 @Observable
 final class ShoppingListsObserved {
-    private(set) var shoppingLists: [ShoppingList]
     var isPresentingNewList = false
     var newListName = ""
     var errorMessage: String?
@@ -20,7 +19,6 @@ final class ShoppingListsObserved {
 
     init(store: any ShoppingStoreProtocol) {
         self.store = store
-        shoppingLists = store.shoppingLists
     }
 
     func dismissError() {

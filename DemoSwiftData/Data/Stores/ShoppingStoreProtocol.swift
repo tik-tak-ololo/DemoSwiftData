@@ -10,11 +10,13 @@ import Foundation
 /// Единая граница между фичами приложения и persistence-реализацией.
 @MainActor
 protocol ShoppingStoreProtocol: AnyObject {
-    var shoppingLists: [ShoppingList] { get }
+    func fetchShoppingLists() throws -> [ShoppingList]
 
     @discardableResult
     func createList(named name: String) throws -> ShoppingList
     func deleteList(_ shoppingList: ShoppingList) throws
+
+    func renameProduct(_ product: Product, to name: String) throws
 
     func addItem(
         named name: String,

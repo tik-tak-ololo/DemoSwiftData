@@ -8,11 +8,8 @@
 import SwiftUI
 
 struct ShoppingListsView: View {
-    let observed: ShoppingListsObserved
 
     var body: some View {
-        @Bindable var observed = observed
-
         VStack {
             Image(systemName: "globe")
                 .imageScale(.large)
