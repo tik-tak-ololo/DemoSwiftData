@@ -12,16 +12,31 @@ import Observation
 @Observable
 final class ShoppingListsObserved {
     private(set) var errorMessage: String?
+    private(set) var resetStatusMessage: String?
 
     @ObservationIgnored private let store: any ShoppingStoreProtocol
+    @ObservationIgnored private let demoDataSeeder: any DemoDataSeeding
     @ObservationIgnored private let consoleOutput: (String) -> Void
 
     init(
         store: any ShoppingStoreProtocol,
+        demoDataSeeder: any DemoDataSeeding,
         consoleOutput: @escaping (String) -> Void = { print($0) }
     ) {
         self.store = store
+        self.demoDataSeeder = demoDataSeeder
         self.consoleOutput = consoleOutput
+    }
+
+    func resetDemoData() {
+        do {
+            try demoDataSeeder.resetToInitialState()
+            errorMessage = nil
+            resetStatusMessage = "Начальные демо-данные восстановлены."
+        } catch {
+            resetStatusMessage = nil
+            errorMessage = error.localizedDescription
+        }
     }
 
     func printShoppingLists() {
@@ -92,7 +107,9 @@ final class ShoppingListsObserved {
         do {
             consoleOutput(try makeOutput())
             errorMessage = nil
+            resetStatusMessage = nil
         } catch {
+            resetStatusMessage = nil
             errorMessage = error.localizedDescription
         }
     }

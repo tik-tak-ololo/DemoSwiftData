@@ -9,10 +9,17 @@ import SwiftUI
 
 struct ShoppingListsView: View {
     @State private var observed: ShoppingListsObserved
+    @State private var isShowingResetConfirmation = false
 
-    init(store: any ShoppingStoreProtocol) {
+    init(
+        store: any ShoppingStoreProtocol,
+        demoDataSeeder: any DemoDataSeeding
+    ) {
         _observed = State(
-            initialValue: ShoppingListsObserved(store: store)
+            initialValue: ShoppingListsObserved(
+                store: store,
+                demoDataSeeder: demoDataSeeder
+            )
         )
     }
 
@@ -22,6 +29,7 @@ struct ShoppingListsView: View {
                 VStack(spacing: 24) {
                     header
                     consoleButtons
+                    resetDemoDataButton
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 20)
@@ -30,7 +38,7 @@ struct ShoppingListsView: View {
             }
             .navigationTitle("SwiftData")
             .alert(
-                "Не удалось прочитать данные",
+                "Не удалось выполнить операцию",
                 isPresented: isShowingError
             ) {
                 Button("OK", role: .cancel) {
@@ -38,6 +46,40 @@ struct ShoppingListsView: View {
                 }
             } message: {
                 Text(observed.errorMessage ?? "Неизвестная ошибка")
+            }
+            .confirmationDialog(
+                "Сбросить хранилище?",
+                isPresented: $isShowingResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Сбросить", role: .destructive) {
+                    observed.resetDemoData()
+                }
+                Button("Отмена", role: .cancel) {}
+            } message: {
+                Text("Все текущие записи будут удалены и заменены начальными демо-данными.")
+            }
+        }
+    }
+
+    private var resetDemoDataButton: some View {
+        VStack(spacing: 10) {
+            Button(role: .destructive) {
+                isShowingResetConfirmation = true
+            } label: {
+                Label("Восстановить демо-данные", systemImage: "arrow.counterclockwise")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .accessibilityHint("Удаляет текущие записи и возвращает начальные демо-данные")
+
+            if let resetStatusMessage = observed.resetStatusMessage {
+                Label(resetStatusMessage, systemImage: "checkmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.green)
+                    .transition(.opacity)
             }
         }
     }
@@ -139,7 +181,9 @@ struct ShoppingListsView: View {
 }
 
 #Preview {
+    let persistence = PersistenceFactory.makePreview()
     ShoppingListsView(
-        store: PersistenceFactory.makePreview().shoppingStore
+        store: persistence.shoppingStore,
+        demoDataSeeder: persistence.demoDataSeeder
     )
 }

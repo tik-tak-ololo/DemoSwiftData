@@ -10,6 +10,7 @@ import SwiftData
 
 struct PersistenceDependencies {
     let shoppingStore: any ShoppingStoreProtocol
+    let demoDataSeeder: any DemoDataSeeding
 }
 
 @MainActor
@@ -59,10 +60,14 @@ enum PersistenceFactory {
             configurations: configuration
         )
         let store = ShoppingStore(modelContainer: container)
-        try DemoDataSeeder(
+        let demoDataSeeder = DemoDataSeeder(
             store: store,
             userDefaults: demoDataUserDefaults
-        ).seedIfNeeded()
-        return PersistenceDependencies(shoppingStore: store)
+        )
+        try demoDataSeeder.seedIfNeeded()
+        return PersistenceDependencies(
+            shoppingStore: store,
+            demoDataSeeder: demoDataSeeder
+        )
     }
 }

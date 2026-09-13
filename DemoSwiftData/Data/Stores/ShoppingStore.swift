@@ -238,40 +238,20 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     func applyInitialDemoDataIfEmpty(_ data: DemoData) throws {
         guard try fetchShoppingLists().isEmpty else { return }
 
+        let existingProducts = try fetchProducts()
+        let productsByNormalizedName = Dictionary(
+            uniqueKeysWithValues: existingProducts.map { ($0.normalizedName, $0) }
+        )
+
         try performTransaction {
-            var productsByNormalizedName: [String: Product] = [:]
+            insert(data, productsByNormalizedName: productsByNormalizedName)
+        }
+    }
 
-            for listData in data.lists {
-                let shoppingList = ShoppingList(
-                    name: listData.name,
-                    iconColor: listData.iconColor,
-                    iconDesign: listData.iconDesign
-                )
-                modelContext.insert(shoppingList)
-
-                for itemData in listData.items {
-                    let normalizedName = Product.normalize(itemData.name)
-                    let product: Product
-                    if let existingProduct = productsByNormalizedName[normalizedName] {
-                        product = existingProduct
-                    } else {
-                        product = try findOrCreateProduct(
-                            named: itemData.name,
-                            initialMeasurementUnits: itemData.productMeasurementUnits
-                        )
-                        productsByNormalizedName[normalizedName] = product
-                    }
-
-                    modelContext.insert(
-                        ShoppingListItem(
-                            quantity: itemData.quantity,
-                            unit: itemData.unit,
-                            shoppingList: shoppingList,
-                            product: product
-                        )
-                    )
-                }
-            }
+    func replaceAllData(with data: DemoData) throws {
+        try performTransaction {
+            try deleteAllData()
+            insert(data, productsByNormalizedName: [:])
         }
     }
 
@@ -291,6 +271,58 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         FetchDescriptor(
             sortBy: [SortDescriptor(\ShoppingListItem.createdAt)]
         )
+    }
+
+    private func deleteAllData() throws {
+        try modelContext.fetch(Self.shoppingListItemsDescriptor)
+            .forEach(modelContext.delete)
+        try modelContext.fetch(FetchDescriptor<ProductMeasurementUnit>())
+            .forEach(modelContext.delete)
+        try modelContext.fetch(Self.shoppingListsDescriptor)
+            .forEach(modelContext.delete)
+        try modelContext.fetch(Self.productsDescriptor)
+            .forEach(modelContext.delete)
+    }
+
+    private func insert(
+        _ data: DemoData,
+        productsByNormalizedName initialProducts: [String: Product]
+    ) {
+        var productsByNormalizedName = initialProducts
+
+        for listData in data.lists {
+            let shoppingList = ShoppingList(
+                name: listData.name,
+                iconColor: listData.iconColor,
+                iconDesign: listData.iconDesign
+            )
+            modelContext.insert(shoppingList)
+
+            for itemData in listData.items {
+                let normalizedName = Product.normalize(itemData.name)
+                let product: Product
+
+                if let existingProduct = productsByNormalizedName[normalizedName] {
+                    product = existingProduct
+                } else {
+                    product = Product(
+                        name: itemData.name,
+                        measurementUnits: Array(itemData.productMeasurementUnits)
+                    )
+                    modelContext.insert(product)
+                    productsByNormalizedName[normalizedName] = product
+                }
+
+                modelContext.insert(
+                    ShoppingListItem(
+                        quantity: itemData.quantity,
+                        unit: itemData.unit,
+                        shoppingList: shoppingList,
+                        product: product
+                    )
+                )
+            }
+        }
     }
 
     private func findOrCreateProduct(

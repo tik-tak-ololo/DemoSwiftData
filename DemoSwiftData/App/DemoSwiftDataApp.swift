@@ -23,7 +23,8 @@ struct DemoSwiftDataApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(
-                store: persistence.shoppingStore
+                store: persistence.shoppingStore,
+                demoDataSeeder: persistence.demoDataSeeder
             )
         }
     }

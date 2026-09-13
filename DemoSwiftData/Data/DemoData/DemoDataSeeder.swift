@@ -10,6 +10,7 @@ import Foundation
 @MainActor
 protocol DemoDataSeeding: AnyObject {
     func seedIfNeeded() throws
+    func resetToInitialState() throws
 }
 
 struct DemoData {
@@ -45,6 +46,7 @@ struct DemoData {
 @MainActor
 protocol DemoDataApplying: AnyObject {
     func applyInitialDemoDataIfEmpty(_ data: DemoData) throws
+    func replaceAllData(with data: DemoData) throws
 }
 
 /// Наполняет новое хранилище, не связывая демоданные с его SwiftData-реализацией.
@@ -66,51 +68,56 @@ final class DemoDataSeeder: DemoDataSeeding {
     func seedIfNeeded() throws {
         guard userDefaults?.bool(forKey: Self.userDefaultsKey) != true else { return }
 
-        try store.applyInitialDemoDataIfEmpty(
-            DemoData(
-                lists: [
-                    DemoData.List(
-                        name: "На неделю",
-                        iconColor: .blue,
-                        iconDesign: .calendar,
-                        items: [
-                            DemoData.Item(
-                                name: "Молоко",
-                                unit: .liter,
-                                quantity: 2,
-                                productMeasurementUnits: [.liter, .milliliter]
-                            ),
-                            DemoData.Item(name: "Хлеб", unit: .piece, quantity: 1),
-                            DemoData.Item(
-                                name: "Яблоки",
-                                unit: .kilogram,
-                                quantity: 2,
-                                productMeasurementUnits: [.kilogram, .gram]
-                            )
-                        ]
+        try store.applyInitialDemoDataIfEmpty(Self.initialData)
+        userDefaults?.set(true, forKey: Self.userDefaultsKey)
+    }
+
+    func resetToInitialState() throws {
+        try store.replaceAllData(with: Self.initialData)
+        userDefaults?.set(true, forKey: Self.userDefaultsKey)
+    }
+
+    private static let initialData = DemoData(
+        lists: [
+            DemoData.List(
+                name: "На неделю",
+                iconColor: .blue,
+                iconDesign: .calendar,
+                items: [
+                    DemoData.Item(
+                        name: "Молоко",
+                        unit: .liter,
+                        quantity: 2,
+                        productMeasurementUnits: [.liter, .milliliter]
                     ),
-                    DemoData.List(
-                        name: "Для пикника",
-                        iconColor: .mint,
-                        iconDesign: .food,
-                        items: [
-                            DemoData.Item(
-                                name: "Вода",
-                                unit: .liter,
-                                quantity: 3,
-                                productMeasurementUnits: [.liter, .milliliter]
-                            ),
-                            DemoData.Item(
-                                name: "Яблоки",
-                                unit: .kilogram,
-                                quantity: 1,
-                                productMeasurementUnits: [.kilogram, .gram]
-                            )
-                        ]
+                    DemoData.Item(name: "Хлеб", unit: .piece, quantity: 1),
+                    DemoData.Item(
+                        name: "Яблоки",
+                        unit: .kilogram,
+                        quantity: 2,
+                        productMeasurementUnits: [.kilogram, .gram]
+                    )
+                ]
+            ),
+            DemoData.List(
+                name: "Для пикника",
+                iconColor: .mint,
+                iconDesign: .food,
+                items: [
+                    DemoData.Item(
+                        name: "Вода",
+                        unit: .liter,
+                        quantity: 3,
+                        productMeasurementUnits: [.liter, .milliliter]
+                    ),
+                    DemoData.Item(
+                        name: "Яблоки",
+                        unit: .kilogram,
+                        quantity: 1,
+                        productMeasurementUnits: [.kilogram, .gram]
                     )
                 ]
             )
-        )
-        userDefaults?.set(true, forKey: Self.userDefaultsKey)
-    }
+        ]
+    )
 }
