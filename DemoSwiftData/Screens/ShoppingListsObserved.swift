@@ -14,16 +14,19 @@ final class ShoppingListsObserved {
     private(set) var errorMessage: String?
     private(set) var resetStatusMessage: String?
 
-    @ObservationIgnored private let store: any ShoppingStoreProtocol
+    @ObservationIgnored private let shoppingStore: any ShoppingStoreProtocol
+    @ObservationIgnored private let productStore: any ProductStoreProtocol
     @ObservationIgnored private let demoDataSeeder: any DemoDataSeeding
     @ObservationIgnored private let consoleOutput: (String) -> Void
 
     init(
-        store: any ShoppingStoreProtocol,
+        shoppingStore: any ShoppingStoreProtocol,
+        productStore: any ProductStoreProtocol,
         demoDataSeeder: any DemoDataSeeding,
         consoleOutput: @escaping (String) -> Void = { print($0) }
     ) {
-        self.store = store
+        self.shoppingStore = shoppingStore
+        self.productStore = productStore
         self.demoDataSeeder = demoDataSeeder
         self.consoleOutput = consoleOutput
     }
@@ -41,7 +44,7 @@ final class ShoppingListsObserved {
 
     func printShoppingLists() {
         performConsoleOutput {
-            let rows = try store.fetchShoppingLists().map { shoppingList in
+            let rows = try shoppingStore.fetchShoppingLists().map { shoppingList in
                 [
                     "name: \(shoppingList.name)",
                     "iconColor: \(shoppingList.iconColor.rawValue)",
@@ -55,7 +58,7 @@ final class ShoppingListsObserved {
 
     func printProducts() {
         performConsoleOutput {
-            let rows = try store.fetchProducts().map { product in
+            let rows = try productStore.fetchProducts().map { product in
                 [
                     "name: \(product.name)",
                     "normalizedName: \(product.normalizedName)",
@@ -69,7 +72,7 @@ final class ShoppingListsObserved {
 
     func printProductMeasurementUnits() {
         performConsoleOutput {
-            let rows = try store.fetchProductMeasurementUnits().map { measurementUnit in
+            let rows = try productStore.fetchProductMeasurementUnits().map { measurementUnit in
                 [
                     "unit: \(measurementUnit.unit.rawValue)",
                     "product: \(measurementUnit.product.name)"
@@ -84,7 +87,7 @@ final class ShoppingListsObserved {
 
     func printShoppingListItems() {
         performConsoleOutput {
-            let rows = try store.fetchShoppingListItems().map { item in
+            let rows = try shoppingStore.fetchShoppingListItems().map { item in
                 [
                     "id: \(item.id)",
                     "quantity: \(item.quantity)",

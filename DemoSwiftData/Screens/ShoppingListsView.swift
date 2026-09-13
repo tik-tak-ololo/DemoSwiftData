@@ -12,12 +12,14 @@ struct ShoppingListsView: View {
     @State private var isShowingResetConfirmation = false
 
     init(
-        store: any ShoppingStoreProtocol,
+        shoppingStore: any ShoppingStoreProtocol,
+        productStore: any ProductStoreProtocol,
         demoDataSeeder: any DemoDataSeeding
     ) {
         _observed = State(
             initialValue: ShoppingListsObserved(
-                store: store,
+                shoppingStore: shoppingStore,
+                productStore: productStore,
                 demoDataSeeder: demoDataSeeder
             )
         )
@@ -183,7 +185,8 @@ struct ShoppingListsView: View {
 #Preview {
     let persistence = PersistenceFactory.makePreview()
     ShoppingListsView(
-        store: persistence.shoppingStore,
+        shoppingStore: persistence.shoppingStore,
+        productStore: persistence.productStore,
         demoDataSeeder: persistence.demoDataSeeder
     )
 }

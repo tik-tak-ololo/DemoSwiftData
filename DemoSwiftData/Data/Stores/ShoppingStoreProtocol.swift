@@ -11,8 +11,6 @@ import Foundation
 @MainActor
 protocol ShoppingStoreProtocol: AnyObject {
     func fetchShoppingLists() throws -> [ShoppingList]
-    func fetchProducts() throws -> [Product]
-    func fetchProductMeasurementUnits() throws -> [ProductMeasurementUnit]
     func fetchShoppingListItems() throws -> [ShoppingListItem]
 
     @discardableResult
@@ -22,12 +20,6 @@ protocol ShoppingStoreProtocol: AnyObject {
         iconDesign: ShoppingListIconDesign
     ) throws -> ShoppingList
     func deleteList(_ shoppingList: ShoppingList) throws
-
-    func renameProduct(_ product: Product, to name: String) throws
-    func setMeasurementUnits(
-        _ units: Set<MeasurementUnit>,
-        for product: Product
-    ) throws
 
     func addItem(
         named name: String,

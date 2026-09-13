@@ -8,20 +8,24 @@
 import SwiftUI
 
 struct RootView: View {
-    private let store: any ShoppingStoreProtocol
+    private let shoppingStore: any ShoppingStoreProtocol
+    private let productStore: any ProductStoreProtocol
     private let demoDataSeeder: any DemoDataSeeding
 
     init(
-        store: any ShoppingStoreProtocol,
+        shoppingStore: any ShoppingStoreProtocol,
+        productStore: any ProductStoreProtocol,
         demoDataSeeder: any DemoDataSeeding
     ) {
-        self.store = store
+        self.shoppingStore = shoppingStore
+        self.productStore = productStore
         self.demoDataSeeder = demoDataSeeder
     }
 
     var body: some View {
         ShoppingListsView(
-            store: store,
+            shoppingStore: shoppingStore,
+            productStore: productStore,
             demoDataSeeder: demoDataSeeder
         )
     }
