@@ -11,6 +11,8 @@ import Foundation
 @MainActor
 protocol ShoppingStoreProtocol: AnyObject {
     func fetchShoppingLists() throws -> [ShoppingList]
+    func fetchProducts() throws -> [Product]
+    func fetchShoppingListItems() throws -> [ShoppingListItem]
 
     @discardableResult
     func createList(named name: String) throws -> ShoppingList

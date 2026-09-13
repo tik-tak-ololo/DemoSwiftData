@@ -43,6 +43,14 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         try modelContext.fetch(Self.shoppingListsDescriptor)
     }
 
+    func fetchProducts() throws -> [Product] {
+        try modelContext.fetch(Self.productsDescriptor)
+    }
+
+    func fetchShoppingListItems() throws -> [ShoppingListItem] {
+        try modelContext.fetch(Self.shoppingListItemsDescriptor)
+    }
+
     @discardableResult
     func createList(named name: String) throws -> ShoppingList {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -192,6 +200,18 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     private static var shoppingListsDescriptor: FetchDescriptor<ShoppingList> {
         FetchDescriptor(
             sortBy: [SortDescriptor(\ShoppingList.createdAt, order: .reverse)]
+        )
+    }
+
+    private static var productsDescriptor: FetchDescriptor<Product> {
+        FetchDescriptor(
+            sortBy: [SortDescriptor(\Product.normalizedName)]
+        )
+    }
+
+    private static var shoppingListItemsDescriptor: FetchDescriptor<ShoppingListItem> {
+        FetchDescriptor(
+            sortBy: [SortDescriptor(\ShoppingListItem.createdAt)]
         )
     }
 

@@ -8,12 +8,13 @@
 import SwiftUI
 
 struct RootView: View {
+    private let store: any ShoppingStoreProtocol
 
     init(store: any ShoppingStoreProtocol) {
-
+        self.store = store
     }
 
     var body: some View {
-        ShoppingListsView()
+        ShoppingListsView(store: store)
     }
 }
