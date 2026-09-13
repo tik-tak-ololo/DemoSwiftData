@@ -8,20 +8,6 @@
 import Foundation
 import SwiftData
 
-enum ShoppingStoreError: LocalizedError {
-    case emptyListName
-    case invalidQuantity
-
-    var errorDescription: String? {
-        switch self {
-        case .emptyListName:
-            "Введите название списка."
-        case .invalidQuantity:
-            "Количество должно быть больше нуля."
-        }
-    }
-}
-
 @MainActor
 final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     /// ModelContext не владеет временем жизни контейнера, поэтому store удерживает оба объекта.
@@ -53,13 +39,8 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         iconColor: ShoppingListIconColor,
         iconDesign: ShoppingListIconDesign
     ) throws -> ShoppingList {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ShoppingStoreError.emptyListName
-        }
-
-        let shoppingList = ShoppingList(
-            name: trimmedName,
+        let shoppingList = try ShoppingList(
+            name: name,
             iconColor: iconColor,
             iconDesign: iconDesign
         )
@@ -74,14 +55,11 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         iconColor: ShoppingListIconColor,
         iconDesign: ShoppingListIconDesign
     ) throws {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ShoppingStoreError.emptyListName
-        }
-
-        shoppingList.name = trimmedName
-        shoppingList.iconColor = iconColor
-        shoppingList.iconDesign = iconDesign
+        try shoppingList.update(
+            name: name,
+            iconColor: iconColor,
+            iconDesign: iconDesign
+        )
         try saveChanges()
     }
 
@@ -96,13 +74,8 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         quantity: Int,
         to shoppingList: ShoppingList
     ) throws {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
-        guard quantity > 0 else {
-            throw ShoppingStoreError.invalidQuantity
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
+        let validatedQuantity = try ShoppingDomainValidation.quantity(quantity)
 
         let product = try productStore.findOrCreateProduct(
             named: trimmedName,
@@ -114,13 +87,13 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         if let existingItem = shoppingList.items.first(where: {
             $0.product?.normalizedName == normalizedName && $0.unit == unit
         }) {
-            existingItem.quantity += quantity
+            try existingItem.increaseQuantity(by: validatedQuantity)
             try saveChanges()
             return
         }
 
-        let item = ShoppingListItem(
-            quantity: quantity,
+        let item = try ShoppingListItem(
+            quantity: validatedQuantity,
             unit: unit,
             shoppingList: shoppingList,
             product: product
@@ -135,13 +108,8 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         unit: MeasurementUnit,
         quantity: Int
     ) throws {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
-        guard quantity > 0 else {
-            throw ShoppingStoreError.invalidQuantity
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
+        let validatedQuantity = try ShoppingDomainValidation.quantity(quantity)
 
         let product = try productStore.findOrCreateProduct(
             named: trimmedName,
@@ -155,16 +123,18 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
                 $0.product?.normalizedName == normalizedName &&
                 $0.unit == unit
         }) {
-            existingItem.quantity += quantity
-            existingItem.isPurchased = existingItem.isPurchased && item.isPurchased
+            try existingItem.increaseQuantity(by: validatedQuantity)
+            existingItem.mergePurchaseStatus(with: item)
             modelContext.delete(item)
             try saveChanges()
             return
         }
 
-        item.product = product
-        item.unit = unit
-        item.quantity = quantity
+        try item.update(
+            product: product,
+            unit: unit,
+            quantity: validatedQuantity
+        )
         try saveChanges()
     }
 
@@ -174,7 +144,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     func togglePurchased(_ item: ShoppingListItem) throws {
-        item.isPurchased.toggle()
+        item.togglePurchased()
         try saveChanges()
     }
 
@@ -187,6 +157,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
     func applyInitialDemoDataIfEmpty(_ data: DemoData) throws {
         guard try fetchShoppingLists().isEmpty else { return }
+        try validate(data)
 
         let existingProducts = try productStore.fetchProducts()
         let productsByNormalizedName = Dictionary(
@@ -199,28 +170,28 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     func replaceAllData(with data: DemoData) throws {
-        do {
-            try clearPersistentStore()
-            try performTransaction {
-                try insert(data, productsByNormalizedName: [:])
-            }
-        } catch {
-            modelContext.rollback()
-            throw error
+        try validate(data)
+        try performTransaction {
+            try deleteAllDataInCurrentContext()
+            try insert(data, productsByNormalizedName: [:])
         }
+        replaceSharedContext()
     }
 
-    private func clearPersistentStore() throws {
-        let cleanupContext = ModelContext(modelContainer)
-        cleanupContext.autosaveEnabled = false
+    private func deleteAllDataInCurrentContext() throws {
+        // Явное удаление дочерних моделей предотвращает создание некорректных
+        // relationship snapshots при удалении и повторной вставке в одной транзакции.
+        try modelContext.fetch(Self.shoppingListItemsDescriptor)
+            .forEach(modelContext.delete)
+        try modelContext.fetch(FetchDescriptor<ProductMeasurementUnit>())
+            .forEach(modelContext.delete)
+        try modelContext.fetch(Self.shoppingListsDescriptor)
+            .forEach(modelContext.delete)
+        try modelContext.fetch(FetchDescriptor<Product>())
+            .forEach(modelContext.delete)
+    }
 
-        try cleanupContext.transaction {
-            try cleanupContext.fetch(Self.shoppingListsDescriptor)
-                .forEach(cleanupContext.delete)
-            try cleanupContext.fetch(FetchDescriptor<Product>())
-                .forEach(cleanupContext.delete)
-        }
-
+    private func replaceSharedContext() {
         let freshContext = ModelContext(modelContainer)
         modelContext = freshContext
         productStore.replaceModelContext(freshContext)
@@ -245,7 +216,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         var productsByNormalizedName = initialProducts
 
         for listData in data.lists {
-            let shoppingList = ShoppingList(
+            let shoppingList = try ShoppingList(
                 name: listData.name,
                 iconColor: listData.iconColor,
                 iconDesign: listData.iconDesign
@@ -254,25 +225,45 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
             for itemData in listData.items {
                 let normalizedName = Product.normalize(itemData.name)
+                let requiredUnits = itemData.productMeasurementUnits.union([itemData.unit])
                 let product: Product
 
                 if let existingProduct = productsByNormalizedName[normalizedName] {
                     product = existingProduct
+                    try productStore.addMissingMeasurementUnits(
+                        requiredUnits,
+                        to: product
+                    )
                 } else {
                     product = try productStore.insertProduct(
                         named: itemData.name,
-                        measurementUnits: itemData.productMeasurementUnits
+                        measurementUnits: requiredUnits
                     )
                     productsByNormalizedName[normalizedName] = product
                 }
 
+                try productStore.validate(itemData.unit, for: product)
                 modelContext.insert(
-                    ShoppingListItem(
+                    try ShoppingListItem(
                         quantity: itemData.quantity,
                         unit: itemData.unit,
                         shoppingList: shoppingList,
                         product: product
                     )
+                )
+            }
+        }
+    }
+
+    private func validate(_ data: DemoData) throws {
+        for list in data.lists {
+            _ = try ShoppingDomainValidation.listName(list.name)
+
+            for item in list.items {
+                _ = try ShoppingDomainValidation.productName(item.name)
+                _ = try ShoppingDomainValidation.quantity(item.quantity)
+                _ = try ShoppingDomainValidation.measurementUnits(
+                    item.productMeasurementUnits.union([item.unit])
                 )
             }
         }

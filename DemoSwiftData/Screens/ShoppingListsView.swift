@@ -287,10 +287,18 @@ struct ShoppingListsView: View {
 }
 
 #Preview {
-    let persistence = PersistenceFactory.makePreview()
-    ShoppingListsView(
-        shoppingStore: persistence.shoppingStore,
-        productStore: persistence.productStore,
-        demoDataSeeder: persistence.demoDataSeeder
-    )
+    switch Result(catching: PersistenceFactory.makePreview) {
+    case let .success(persistence):
+        ShoppingListsView(
+            shoppingStore: persistence.shoppingStore,
+            productStore: persistence.productStore,
+            demoDataSeeder: persistence.demoDataSeeder
+        )
+    case let .failure(error):
+        ContentUnavailableView(
+            "Preview недоступен",
+            systemImage: "exclamationmark.triangle",
+            description: Text(error.localizedDescription)
+        )
+    }
 }

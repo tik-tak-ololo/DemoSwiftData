@@ -29,7 +29,7 @@ enum MeasurementUnit: String, CaseIterable, Codable {
 @Model
 final class ProductMeasurementUnit {
     private(set) var unit: MeasurementUnit
-    var product: Product?
+    private(set) var product: Product?
 
     init(unit: MeasurementUnit, product: Product) {
         self.unit = unit

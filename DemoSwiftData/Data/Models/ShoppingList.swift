@@ -39,22 +39,32 @@ enum ShoppingListIconDesign: String, CaseIterable, Codable {
 
 @Model
 final class ShoppingList {
-    var name: String
-    var iconColor: ShoppingListIconColor
-    var iconDesign: ShoppingListIconDesign
+    private(set) var name: String
+    private(set) var iconColor: ShoppingListIconColor
+    private(set) var iconDesign: ShoppingListIconDesign
 
     @Relationship(deleteRule: .cascade, inverse: \ShoppingListItem.shoppingList)
-    var items: [ShoppingListItem]
+    private(set) var items: [ShoppingListItem]
 
     init(
         name: String,
         iconColor: ShoppingListIconColor,
         iconDesign: ShoppingListIconDesign
-    ) {
-        self.name = name
+    ) throws {
+        self.name = try ShoppingDomainValidation.listName(name)
         self.iconColor = iconColor
         self.iconDesign = iconDesign
         items = []
+    }
+
+    func update(
+        name: String,
+        iconColor: ShoppingListIconColor,
+        iconDesign: ShoppingListIconDesign
+    ) throws {
+        self.name = try ShoppingDomainValidation.listName(name)
+        self.iconColor = iconColor
+        self.iconDesign = iconDesign
     }
 
     var sortedItems: [ShoppingListItem] {

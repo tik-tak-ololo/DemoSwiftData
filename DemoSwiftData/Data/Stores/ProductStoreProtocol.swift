@@ -57,6 +57,10 @@ protocol ProductStoreCoordinating: ProductStoreProtocol {
         named name: String,
         measurementUnits: Set<MeasurementUnit>
     ) throws -> Product
+    func addMissingMeasurementUnits(
+        _ units: Set<MeasurementUnit>,
+        to product: Product
+    ) throws
     func validate(
         _ unit: MeasurementUnit,
         for product: Product

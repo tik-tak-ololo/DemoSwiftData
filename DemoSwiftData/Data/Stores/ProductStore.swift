@@ -9,10 +9,7 @@ import Foundation
 import SwiftData
 
 enum ProductStoreError: LocalizedError {
-    case emptyProductName
     case duplicateProductName
-    case emptyMeasurementUnits
-    case unsupportedMeasurementUnit(productName: String, unit: MeasurementUnit)
     case duplicateMeasurementUnit
     case lastMeasurementUnit
     case measurementUnitInUse
@@ -20,14 +17,8 @@ enum ProductStoreError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .emptyProductName:
-            "Введите название товара."
         case .duplicateProductName:
             "Товар с таким названием уже существует."
-        case .emptyMeasurementUnits:
-            "У товара должна быть хотя бы одна единица измерения."
-        case let .unsupportedMeasurementUnit(productName, unit):
-            "Для товара «\(productName)» нельзя использовать единицу «\(unit.rawValue)»."
         case .duplicateMeasurementUnit:
             "Такая единица измерения уже добавлена товару."
         case .lastMeasurementUnit:
@@ -79,13 +70,8 @@ final class ProductStore: ProductStoreCoordinating {
         named name: String,
         measurementUnits: Set<MeasurementUnit>
     ) throws -> Product {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
-        guard !measurementUnits.isEmpty else {
-            throw ProductStoreError.emptyMeasurementUnits
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
+        _ = try ShoppingDomainValidation.measurementUnits(measurementUnits)
         guard try findProduct(normalizedName: Product.normalize(trimmedName)) == nil else {
             throw ProductStoreError.duplicateProductName
         }
@@ -103,13 +89,8 @@ final class ProductStore: ProductStoreCoordinating {
         name: String,
         measurementUnits: Set<MeasurementUnit>
     ) throws {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
-        guard !measurementUnits.isEmpty else {
-            throw ProductStoreError.emptyMeasurementUnits
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
+        _ = try ShoppingDomainValidation.measurementUnits(measurementUnits)
 
         let normalizedName = Product.normalize(trimmedName)
         if normalizedName != product.normalizedName,
@@ -122,7 +103,7 @@ final class ProductStore: ProductStoreCoordinating {
             throw ProductStoreError.measurementUnitInUse
         }
 
-        product.rename(to: trimmedName)
+        try product.rename(to: trimmedName)
         applyMeasurementUnits(measurementUnits, to: product)
         try saveChanges()
     }
@@ -164,9 +145,9 @@ final class ProductStore: ProductStoreCoordinating {
 
         let previousUnit = measurementUnit.unit
         measurementUnit.changeUnit(to: unit)
-        product.listItems
-            .filter { $0.unit == previousUnit }
-            .forEach { $0.unit = unit }
+        for item in product.listItems where item.unit == previousUnit {
+            try item.changeUnit(to: unit)
+        }
         try saveChanges()
     }
 
@@ -186,10 +167,7 @@ final class ProductStore: ProductStoreCoordinating {
     }
 
     func renameProduct(_ product: Product, to name: String) throws {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
 
         let normalizedName = Product.normalize(trimmedName)
         if normalizedName != product.normalizedName,
@@ -197,7 +175,7 @@ final class ProductStore: ProductStoreCoordinating {
             throw ProductStoreError.duplicateProductName
         }
 
-        product.rename(to: trimmedName)
+        try product.rename(to: trimmedName)
         try saveChanges()
     }
 
@@ -205,9 +183,7 @@ final class ProductStore: ProductStoreCoordinating {
         _ units: Set<MeasurementUnit>,
         for product: Product
     ) throws {
-        guard !units.isEmpty else {
-            throw ProductStoreError.emptyMeasurementUnits
-        }
+        _ = try ShoppingDomainValidation.measurementUnits(units)
 
         let usedUnits = Set(product.listItems.map(\.unit))
         guard usedUnits.isSubset(of: units) else {
@@ -222,10 +198,7 @@ final class ProductStore: ProductStoreCoordinating {
         named name: String,
         initialMeasurementUnits: Set<MeasurementUnit>
     ) throws -> Product {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
 
         let normalizedName = Product.normalize(trimmedName)
         if let existingProduct = try findProduct(normalizedName: normalizedName) {
@@ -242,32 +215,34 @@ final class ProductStore: ProductStoreCoordinating {
         named name: String,
         measurementUnits: Set<MeasurementUnit>
     ) throws -> Product {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw ProductStoreError.emptyProductName
-        }
-        guard !measurementUnits.isEmpty else {
-            throw ProductStoreError.emptyMeasurementUnits
-        }
+        let trimmedName = try ShoppingDomainValidation.productName(name)
+        let validatedUnits = try ShoppingDomainValidation.measurementUnits(measurementUnits)
 
-        let product = Product(
+        let product = try Product(
             name: trimmedName,
-            measurementUnits: Array(measurementUnits)
+            measurementUnits: Array(validatedUnits)
         )
         modelContext.insert(product)
         return product
+    }
+
+    func addMissingMeasurementUnits(
+        _ units: Set<MeasurementUnit>,
+        to product: Product
+    ) throws {
+        let validatedUnits = try ShoppingDomainValidation.measurementUnits(units)
+        for unit in validatedUnits where !product.supports(unit) {
+            if let measurementUnit = product.addMeasurementUnit(unit) {
+                modelContext.insert(measurementUnit)
+            }
+        }
     }
 
     func validate(
         _ unit: MeasurementUnit,
         for product: Product
     ) throws {
-        guard product.supports(unit) else {
-            throw ProductStoreError.unsupportedMeasurementUnit(
-                productName: product.name,
-                unit: unit
-            )
-        }
+        try ShoppingDomainValidation.unit(unit, isSupportedBy: product)
     }
 
     private static var productsDescriptor: FetchDescriptor<Product> {

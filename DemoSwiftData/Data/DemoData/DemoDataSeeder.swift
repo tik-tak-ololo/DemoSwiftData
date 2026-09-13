@@ -36,7 +36,7 @@ struct DemoData {
             self.name = name
             self.unit = unit
             self.quantity = quantity
-            self.productMeasurementUnits = productMeasurementUnits ?? [unit]
+            self.productMeasurementUnits = (productMeasurementUnits ?? []).union([unit])
         }
     }
 
@@ -75,6 +75,10 @@ final class DemoDataSeeder: DemoDataSeeding {
     func resetToInitialState() throws {
         try store.replaceAllData(with: Self.initialData)
         userDefaults?.set(true, forKey: Self.userDefaultsKey)
+    }
+
+    static func resetSeedingState(in userDefaults: UserDefaults) {
+        userDefaults.removeObject(forKey: userDefaultsKey)
     }
 
     private static let initialData = DemoData(

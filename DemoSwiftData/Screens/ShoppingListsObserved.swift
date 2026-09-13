@@ -323,7 +323,11 @@ final class ShoppingListsObserved {
                 throw CRUDDemoError.itemWithoutProduct
             }
 
-            let quantity = item.quantity + 1
+            let quantityResult = item.quantity.addingReportingOverflow(1)
+            guard !quantityResult.overflow else {
+                throw ShoppingDomainError.quantityOverflow
+            }
+            let quantity = quantityResult.partialValue
             try shoppingStore.updateItem(
                 item,
                 name: product.name,

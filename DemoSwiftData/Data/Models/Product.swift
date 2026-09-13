@@ -13,19 +13,20 @@ final class Product {
     private(set) var name: String
     @Attribute(.unique) private(set) var normalizedName: String
     @Relationship(deleteRule: .cascade, inverse: \ShoppingListItem.product)
-    var listItems: [ShoppingListItem]
+    private(set) var listItems: [ShoppingListItem]
     @Relationship(deleteRule: .cascade, inverse: \ProductMeasurementUnit.product)
     private(set) var measurementUnits: [ProductMeasurementUnit]
 
-    init(name: String, measurementUnits: [MeasurementUnit]) {
-        precondition(!measurementUnits.isEmpty, "У товара должна быть хотя бы одна единица измерения.")
+    init(name: String, measurementUnits: [MeasurementUnit]) throws {
+        let validatedName = try ShoppingDomainValidation.productName(name)
+        let validatedUnits = try ShoppingDomainValidation.measurementUnits(Set(measurementUnits))
 
-        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        normalizedName = Self.normalize(name)
+        self.name = validatedName
+        normalizedName = Self.normalize(validatedName)
         listItems = []
         self.measurementUnits = []
 
-        Array(Set(measurementUnits))
+        Array(validatedUnits)
             .sorted { $0.rawValue < $1.rawValue }
             .forEach { addMeasurementUnit($0) }
     }
@@ -37,9 +38,10 @@ final class Product {
             .lowercased(with: Locale(identifier: "en_US_POSIX"))
     }
 
-    func rename(to name: String) {
-        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        normalizedName = Self.normalize(name)
+    func rename(to name: String) throws {
+        let validatedName = try ShoppingDomainValidation.productName(name)
+        self.name = validatedName
+        normalizedName = Self.normalize(validatedName)
     }
 
     func supports(_ unit: MeasurementUnit) -> Bool {
