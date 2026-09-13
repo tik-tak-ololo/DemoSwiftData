@@ -15,6 +15,8 @@ protocol DemoDataSeeding: AnyObject {
 struct DemoData {
     struct List {
         let name: String
+        let iconColor: ShoppingListIconColor
+        let iconDesign: ShoppingListIconDesign
         let items: [Item]
     }
 
@@ -55,6 +57,8 @@ final class DemoDataSeeder: DemoDataSeeding {
                 lists: [
                     DemoData.List(
                         name: "На неделю",
+                        iconColor: .blue,
+                        iconDesign: .calendar,
                         items: [
                             DemoData.Item(name: "Молоко", quantity: 2),
                             DemoData.Item(name: "Хлеб", quantity: 1),
@@ -63,6 +67,8 @@ final class DemoDataSeeder: DemoDataSeeding {
                     ),
                     DemoData.List(
                         name: "Для пикника",
+                        iconColor: .mint,
+                        iconDesign: .food,
                         items: [
                             DemoData.Item(name: "Вода", quantity: 3),
                             DemoData.Item(name: "Яблоки", quantity: 4)

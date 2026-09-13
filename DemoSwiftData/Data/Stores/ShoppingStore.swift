@@ -52,13 +52,21 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     @discardableResult
-    func createList(named name: String) throws -> ShoppingList {
+    func createList(
+        named name: String,
+        iconColor: ShoppingListIconColor,
+        iconDesign: ShoppingListIconDesign
+    ) throws -> ShoppingList {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             throw ShoppingStoreError.emptyListName
         }
 
-        let shoppingList = ShoppingList(name: trimmedName)
+        let shoppingList = ShoppingList(
+            name: trimmedName,
+            iconColor: iconColor,
+            iconDesign: iconDesign
+        )
         modelContext.insert(shoppingList)
         try saveChanges()
         return shoppingList
@@ -172,7 +180,11 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
             var productsByNormalizedName: [String: Product] = [:]
 
             for listData in data.lists {
-                let shoppingList = ShoppingList(name: listData.name)
+                let shoppingList = ShoppingList(
+                    name: listData.name,
+                    iconColor: listData.iconColor,
+                    iconDesign: listData.iconDesign
+                )
                 modelContext.insert(shoppingList)
 
                 for itemData in listData.items {
@@ -199,7 +211,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
     private static var shoppingListsDescriptor: FetchDescriptor<ShoppingList> {
         FetchDescriptor(
-            sortBy: [SortDescriptor(\ShoppingList.createdAt, order: .reverse)]
+            sortBy: [SortDescriptor(\ShoppingList.name)]
         )
     }
 

@@ -28,9 +28,9 @@ final class ShoppingListsObserved {
         performConsoleOutput {
             let rows = try store.fetchShoppingLists().map { shoppingList in
                 [
-                    "id: \(shoppingList.id)",
                     "name: \(shoppingList.name)",
-                    "createdAt: \(Self.format(shoppingList.createdAt))",
+                    "iconColor: \(shoppingList.iconColor.rawValue)",
+                    "iconDesign: \(shoppingList.iconDesign.rawValue)",
                     "itemsCount: \(shoppingList.items.count)"
                 ]
             }
@@ -61,7 +61,7 @@ final class ShoppingListsObserved {
                     "quantity: \(item.quantity)",
                     "isPurchased: \(item.isPurchased)",
                     "createdAt: \(Self.format(item.createdAt))",
-                    "shoppingList: \(Self.relationshipDescription(id: item.shoppingList?.id, name: item.shoppingList?.name))",
+                    "shoppingList: \(item.shoppingList?.name ?? "nil")",
                     "product: \(Self.relationshipDescription(id: item.product?.id, name: item.product?.name))"
                 ]
             }

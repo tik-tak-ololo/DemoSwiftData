@@ -15,7 +15,11 @@ protocol ShoppingStoreProtocol: AnyObject {
     func fetchShoppingListItems() throws -> [ShoppingListItem]
 
     @discardableResult
-    func createList(named name: String) throws -> ShoppingList
+    func createList(
+        named name: String,
+        iconColor: ShoppingListIconColor,
+        iconDesign: ShoppingListIconDesign
+    ) throws -> ShoppingList
     func deleteList(_ shoppingList: ShoppingList) throws
 
     func renameProduct(_ product: Product, to name: String) throws
