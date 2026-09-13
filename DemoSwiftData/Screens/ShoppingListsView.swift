@@ -76,6 +76,13 @@ struct ShoppingListsView: View {
             )
 
             consoleButton(
+                title: "ProductMeasurementUnit",
+                subtitle: "Допустимые единицы товаров",
+                systemImage: "ruler.fill",
+                action: observed.printProductMeasurementUnits
+            )
+
+            consoleButton(
                 title: "ShoppingListItem",
                 subtitle: "Позиции списков и их связи",
                 systemImage: "cart.fill.badge.plus",

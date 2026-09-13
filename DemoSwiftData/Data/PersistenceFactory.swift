@@ -45,6 +45,7 @@ enum PersistenceFactory {
         Schema([
             ShoppingList.self,
             Product.self,
+            ProductMeasurementUnit.self,
             ShoppingListItem.self
         ])
     }

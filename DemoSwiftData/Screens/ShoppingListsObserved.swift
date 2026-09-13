@@ -44,10 +44,26 @@ final class ShoppingListsObserved {
                 [
                     "name: \(product.name)",
                     "normalizedName: \(product.normalizedName)",
+                    "measurementUnits: \(Self.measurementUnitsDescription(product))",
                     "listItemsCount: \(product.listItems.count)"
                 ]
             }
             return Self.makeTableDump(tableName: "Product", rows: rows)
+        }
+    }
+
+    func printProductMeasurementUnits() {
+        performConsoleOutput {
+            let rows = try store.fetchProductMeasurementUnits().map { measurementUnit in
+                [
+                    "unit: \(measurementUnit.unit.rawValue)",
+                    "product: \(measurementUnit.product.name)"
+                ]
+            }
+            return Self.makeTableDump(
+                tableName: "ProductMeasurementUnit",
+                rows: rows
+            )
         }
     }
 
@@ -99,6 +115,13 @@ final class ShoppingListsObserved {
     private static func productDescription(_ product: Product?) -> String {
         guard let product else { return "nil" }
         return product.name
+    }
+
+    private static func measurementUnitsDescription(_ product: Product) -> String {
+        product.measurementUnits
+            .map(\.unit.rawValue)
+            .sorted()
+            .joined(separator: ", ")
     }
 
     private static func format(_ date: Date) -> String {

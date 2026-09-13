@@ -8,20 +8,6 @@
 import Foundation
 import SwiftData
 
-/// Основные единицы измерения, используемые для покупок в России.
-enum MeasurementUnit: String, CaseIterable, Codable {
-    case piece = "штуки"
-    case kilogram = "килограммы"
-    case gram = "граммы"
-    case liter = "литры"
-    case milliliter = "миллилитры"
-    case meter = "метры"
-    case centimeter = "сантиметры"
-    case squareMeter = "квадратные метры"
-    case cubicMeter = "кубические метры"
-    case package = "упаковки"
-}
-
 /// Связующая сущность для отношения many-to-many между списками и товарами.
 /// Количество, единица измерения и статус покупки относятся к позиции списка.
 @Model
