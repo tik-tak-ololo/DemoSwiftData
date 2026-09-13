@@ -95,6 +95,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
     func addItem(
         named name: String,
+        unit: MeasurementUnit,
         quantity: Int,
         to shoppingList: ShoppingList
     ) throws {
@@ -108,7 +109,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
         let normalizedName = Product.normalize(trimmedName)
         if let existingItem = shoppingList.items.first(where: {
-            $0.product?.normalizedName == normalizedName
+            $0.product?.normalizedName == normalizedName && $0.unit == unit
         }) {
             existingItem.quantity += quantity
             try saveChanges()
@@ -118,6 +119,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         let product = try findOrCreateProduct(named: trimmedName)
         let item = ShoppingListItem(
             quantity: quantity,
+            unit: unit,
             shoppingList: shoppingList,
             product: product
         )
@@ -128,6 +130,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     func updateItem(
         _ item: ShoppingListItem,
         name: String,
+        unit: MeasurementUnit,
         quantity: Int
     ) throws {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -140,7 +143,9 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
         let normalizedName = Product.normalize(trimmedName)
         if let existingItem = item.shoppingList?.items.first(where: {
-            $0 !== item && $0.product?.normalizedName == normalizedName
+            $0 !== item &&
+                $0.product?.normalizedName == normalizedName &&
+                $0.unit == unit
         }) {
             existingItem.quantity += quantity
             existingItem.isPurchased = existingItem.isPurchased && item.isPurchased
@@ -152,6 +157,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         if item.product?.normalizedName != normalizedName {
             item.product = try findOrCreateProduct(named: trimmedName)
         }
+        item.unit = unit
         item.quantity = quantity
         try saveChanges()
     }
@@ -200,6 +206,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
                     modelContext.insert(
                         ShoppingListItem(
                             quantity: itemData.quantity,
+                            unit: itemData.unit,
                             shoppingList: shoppingList,
                             product: product
                         )

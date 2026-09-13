@@ -22,6 +22,7 @@ struct DemoData {
 
     struct Item {
         let name: String
+        let unit: MeasurementUnit
         let quantity: Int
     }
 
@@ -60,9 +61,9 @@ final class DemoDataSeeder: DemoDataSeeding {
                         iconColor: .blue,
                         iconDesign: .calendar,
                         items: [
-                            DemoData.Item(name: "Молоко", quantity: 2),
-                            DemoData.Item(name: "Хлеб", quantity: 1),
-                            DemoData.Item(name: "Яблоки", quantity: 6)
+                            DemoData.Item(name: "Молоко", unit: .liter, quantity: 2),
+                            DemoData.Item(name: "Хлеб", unit: .piece, quantity: 1),
+                            DemoData.Item(name: "Яблоки", unit: .kilogram, quantity: 2)
                         ]
                     ),
                     DemoData.List(
@@ -70,8 +71,8 @@ final class DemoDataSeeder: DemoDataSeeding {
                         iconColor: .mint,
                         iconDesign: .food,
                         items: [
-                            DemoData.Item(name: "Вода", quantity: 3),
-                            DemoData.Item(name: "Яблоки", quantity: 4)
+                            DemoData.Item(name: "Вода", unit: .liter, quantity: 3),
+                            DemoData.Item(name: "Яблоки", unit: .kilogram, quantity: 1)
                         ]
                     )
                 ]

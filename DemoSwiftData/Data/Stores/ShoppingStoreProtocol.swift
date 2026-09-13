@@ -26,12 +26,14 @@ protocol ShoppingStoreProtocol: AnyObject {
 
     func addItem(
         named name: String,
+        unit: MeasurementUnit,
         quantity: Int,
         to shoppingList: ShoppingList
     ) throws
     func updateItem(
         _ item: ShoppingListItem,
         name: String,
+        unit: MeasurementUnit,
         quantity: Int
     ) throws
     func deleteItem(_ item: ShoppingListItem) throws

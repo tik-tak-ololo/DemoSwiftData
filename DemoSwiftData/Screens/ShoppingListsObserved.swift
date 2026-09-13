@@ -42,10 +42,8 @@ final class ShoppingListsObserved {
         performConsoleOutput {
             let rows = try store.fetchProducts().map { product in
                 [
-                    "id: \(product.id)",
                     "name: \(product.name)",
                     "normalizedName: \(product.normalizedName)",
-                    "symbolName: \(product.symbolName)",
                     "listItemsCount: \(product.listItems.count)"
                 ]
             }
@@ -59,10 +57,11 @@ final class ShoppingListsObserved {
                 [
                     "id: \(item.id)",
                     "quantity: \(item.quantity)",
+                    "unit: \(item.unit.rawValue)",
                     "isPurchased: \(item.isPurchased)",
                     "createdAt: \(Self.format(item.createdAt))",
                     "shoppingList: \(item.shoppingList?.name ?? "nil")",
-                    "product: \(Self.relationshipDescription(id: item.product?.id, name: item.product?.name))"
+                    "product: \(Self.productDescription(item.product))"
                 ]
             }
             return Self.makeTableDump(tableName: "ShoppingListItem", rows: rows)
@@ -97,12 +96,9 @@ final class ShoppingListsObserved {
             : "\(header)\n\(body)\n===================="
     }
 
-    private static func relationshipDescription(
-        id: UUID?,
-        name: String?
-    ) -> String {
-        guard let id, let name else { return "nil" }
-        return "\(name) [\(id)]"
+    private static func productDescription(_ product: Product?) -> String {
+        guard let product else { return "nil" }
+        return product.name
     }
 
     private static func format(_ date: Date) -> String {

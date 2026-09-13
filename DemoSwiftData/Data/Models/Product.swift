@@ -10,23 +10,14 @@ import SwiftData
 
 @Model
 final class Product {
-    @Attribute(.unique) var id: UUID
-    @Attribute(.unique) private(set) var normalizedName: String
     private(set) var name: String
-    var symbolName: String
-
+    @Attribute(.unique) private(set) var normalizedName: String
     @Relationship(deleteRule: .cascade, inverse: \ShoppingListItem.product)
     var listItems: [ShoppingListItem]
 
-    init(
-        id: UUID = UUID(),
-        name: String,
-        symbolName: String = "cart.fill"
-    ) {
-        self.id = id
+    init(name: String) {
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         normalizedName = Self.normalize(name)
-        self.symbolName = symbolName
         listItems = []
     }
 
