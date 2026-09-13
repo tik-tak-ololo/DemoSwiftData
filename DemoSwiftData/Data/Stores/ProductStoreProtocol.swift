@@ -2,7 +2,7 @@
 //  ProductStoreProtocol.swift
 //  DemoSwiftData
 //
-//  Created by Codex on 13.09.2026.
+//  Created by Сергей Хмелёв on 13.09.2026.
 //
 
 import Foundation
