@@ -19,6 +19,12 @@ protocol ShoppingStoreProtocol: AnyObject {
         iconColor: ShoppingListIconColor,
         iconDesign: ShoppingListIconDesign
     ) throws -> ShoppingList
+    func updateList(
+        _ shoppingList: ShoppingList,
+        name: String,
+        iconColor: ShoppingListIconColor,
+        iconDesign: ShoppingListIconDesign
+    ) throws
     func deleteList(_ shoppingList: ShoppingList) throws
 
     func addItem(

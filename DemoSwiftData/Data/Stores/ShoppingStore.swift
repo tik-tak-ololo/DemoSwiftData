@@ -26,7 +26,7 @@ enum ShoppingStoreError: LocalizedError {
 final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     /// ModelContext не владеет временем жизни контейнера, поэтому store удерживает оба объекта.
     private let modelContainer: ModelContainer
-    private let modelContext: ModelContext
+    private var modelContext: ModelContext
     private let productStore: any ProductStoreCoordinating
 
     init(
@@ -67,7 +67,24 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         try saveChanges()
         return shoppingList
     }
-    
+
+    func updateList(
+        _ shoppingList: ShoppingList,
+        name: String,
+        iconColor: ShoppingListIconColor,
+        iconDesign: ShoppingListIconDesign
+    ) throws {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            throw ShoppingStoreError.emptyListName
+        }
+
+        shoppingList.name = trimmedName
+        shoppingList.iconColor = iconColor
+        shoppingList.iconDesign = iconDesign
+        try saveChanges()
+    }
+
     func deleteList(_ shoppingList: ShoppingList) throws {
         modelContext.delete(shoppingList)
         try saveChanges()
@@ -150,7 +167,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         item.quantity = quantity
         try saveChanges()
     }
-    
+
     func deleteItem(_ item: ShoppingListItem) throws {
         modelContext.delete(item)
         try saveChanges()
@@ -182,10 +199,31 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     func replaceAllData(with data: DemoData) throws {
-        try performTransaction {
-            try deleteAllData()
-            try insert(data, productsByNormalizedName: [:])
+        do {
+            try clearPersistentStore()
+            try performTransaction {
+                try insert(data, productsByNormalizedName: [:])
+            }
+        } catch {
+            modelContext.rollback()
+            throw error
         }
+    }
+
+    private func clearPersistentStore() throws {
+        let cleanupContext = ModelContext(modelContainer)
+        cleanupContext.autosaveEnabled = false
+
+        try cleanupContext.transaction {
+            try cleanupContext.fetch(Self.shoppingListsDescriptor)
+                .forEach(cleanupContext.delete)
+            try cleanupContext.fetch(FetchDescriptor<Product>())
+                .forEach(cleanupContext.delete)
+        }
+
+        let freshContext = ModelContext(modelContainer)
+        modelContext = freshContext
+        productStore.replaceModelContext(freshContext)
     }
 
     private static var shoppingListsDescriptor: FetchDescriptor<ShoppingList> {
@@ -198,14 +236,6 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         FetchDescriptor(
             sortBy: [SortDescriptor(\ShoppingListItem.createdAt)]
         )
-    }
-
-    private func deleteAllData() throws {
-        try modelContext.fetch(Self.shoppingListItemsDescriptor)
-            .forEach(modelContext.delete)
-        try modelContext.fetch(Self.shoppingListsDescriptor)
-            .forEach(modelContext.delete)
-        try productStore.deleteAllProducts()
     }
 
     private func insert(

@@ -60,7 +60,9 @@ enum PersistenceFactory {
             for: schema,
             configurations: configuration
         )
-        let modelContext = container.mainContext
+        // Stores use a replaceable shared context. This lets a full reset
+        // discard every registered (and now invalidated) model instance.
+        let modelContext = ModelContext(container)
         let productStore = ProductStore(
             modelContainer: container,
             modelContext: modelContext

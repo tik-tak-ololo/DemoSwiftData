@@ -13,7 +13,10 @@ enum ProductStoreError: LocalizedError {
     case duplicateProductName
     case emptyMeasurementUnits
     case unsupportedMeasurementUnit(productName: String, unit: MeasurementUnit)
+    case duplicateMeasurementUnit
+    case lastMeasurementUnit
     case measurementUnitInUse
+    case measurementUnitWithoutProduct
 
     var errorDescription: String? {
         switch self {
@@ -25,8 +28,14 @@ enum ProductStoreError: LocalizedError {
             "У товара должна быть хотя бы одна единица измерения."
         case let .unsupportedMeasurementUnit(productName, unit):
             "Для товара «\(productName)» нельзя использовать единицу «\(unit.rawValue)»."
+        case .duplicateMeasurementUnit:
+            "Такая единица измерения уже добавлена товару."
+        case .lastMeasurementUnit:
+            "У товара должна остаться хотя бы одна единица измерения."
         case .measurementUnitInUse:
             "Нельзя удалить единицу измерения, которая используется в списке покупок."
+        case .measurementUnitWithoutProduct:
+            "У единицы измерения отсутствует связанный товар."
         }
     }
 }
@@ -35,13 +44,17 @@ enum ProductStoreError: LocalizedError {
 final class ProductStore: ProductStoreCoordinating {
     /// ModelContext не владеет временем жизни контейнера, поэтому store удерживает оба объекта.
     private let modelContainer: ModelContainer
-    private let modelContext: ModelContext
+    private var modelContext: ModelContext
 
     init(
         modelContainer: ModelContainer,
         modelContext: ModelContext
     ) {
         self.modelContainer = modelContainer
+        self.modelContext = modelContext
+    }
+
+    func replaceModelContext(_ modelContext: ModelContext) {
         self.modelContext = modelContext
     }
 
@@ -52,13 +65,124 @@ final class ProductStore: ProductStoreCoordinating {
     func fetchProductMeasurementUnits() throws -> [ProductMeasurementUnit] {
         try modelContext.fetch(FetchDescriptor<ProductMeasurementUnit>())
             .sorted {
-                let firstProduct = $0.product.normalizedName
-                let secondProduct = $1.product.normalizedName
+                let firstProduct = $0.product?.normalizedName ?? ""
+                let secondProduct = $1.product?.normalizedName ?? ""
                 if firstProduct != secondProduct {
                     return firstProduct < secondProduct
                 }
                 return $0.unit.rawValue < $1.unit.rawValue
             }
+    }
+
+    @discardableResult
+    func createProduct(
+        named name: String,
+        measurementUnits: Set<MeasurementUnit>
+    ) throws -> Product {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            throw ProductStoreError.emptyProductName
+        }
+        guard !measurementUnits.isEmpty else {
+            throw ProductStoreError.emptyMeasurementUnits
+        }
+        guard try findProduct(normalizedName: Product.normalize(trimmedName)) == nil else {
+            throw ProductStoreError.duplicateProductName
+        }
+
+        let product = try insertProduct(
+            named: trimmedName,
+            measurementUnits: measurementUnits
+        )
+        try saveChanges()
+        return product
+    }
+
+    func updateProduct(
+        _ product: Product,
+        name: String,
+        measurementUnits: Set<MeasurementUnit>
+    ) throws {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            throw ProductStoreError.emptyProductName
+        }
+        guard !measurementUnits.isEmpty else {
+            throw ProductStoreError.emptyMeasurementUnits
+        }
+
+        let normalizedName = Product.normalize(trimmedName)
+        if normalizedName != product.normalizedName,
+           try findProduct(normalizedName: normalizedName) != nil {
+            throw ProductStoreError.duplicateProductName
+        }
+
+        let usedUnits = Set(product.listItems.map(\.unit))
+        guard usedUnits.isSubset(of: measurementUnits) else {
+            throw ProductStoreError.measurementUnitInUse
+        }
+
+        product.rename(to: trimmedName)
+        applyMeasurementUnits(measurementUnits, to: product)
+        try saveChanges()
+    }
+
+    func deleteProduct(_ product: Product) throws {
+        modelContext.delete(product)
+        try saveChanges()
+    }
+
+    @discardableResult
+    func createMeasurementUnit(
+        _ unit: MeasurementUnit,
+        for product: Product
+    ) throws -> ProductMeasurementUnit {
+        guard !product.supports(unit) else {
+            throw ProductStoreError.duplicateMeasurementUnit
+        }
+        guard let measurementUnit = product.addMeasurementUnit(unit) else {
+            throw ProductStoreError.duplicateMeasurementUnit
+        }
+
+        modelContext.insert(measurementUnit)
+        try saveChanges()
+        return measurementUnit
+    }
+
+    func updateMeasurementUnit(
+        _ measurementUnit: ProductMeasurementUnit,
+        to unit: MeasurementUnit
+    ) throws {
+        guard measurementUnit.unit != unit else { return }
+
+        guard let product = measurementUnit.product else {
+            throw ProductStoreError.measurementUnitWithoutProduct
+        }
+        guard !product.supports(unit) else {
+            throw ProductStoreError.duplicateMeasurementUnit
+        }
+
+        let previousUnit = measurementUnit.unit
+        measurementUnit.changeUnit(to: unit)
+        product.listItems
+            .filter { $0.unit == previousUnit }
+            .forEach { $0.unit = unit }
+        try saveChanges()
+    }
+
+    func deleteMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws {
+        guard let product = measurementUnit.product else {
+            throw ProductStoreError.measurementUnitWithoutProduct
+        }
+        guard product.measurementUnits.count > 1 else {
+            throw ProductStoreError.lastMeasurementUnit
+        }
+        guard !product.listItems.contains(where: { $0.unit == measurementUnit.unit }) else {
+            throw ProductStoreError.measurementUnitInUse
+        }
+
+        modelContext.delete(measurementUnit)
+        try saveChanges()
     }
 
     func renameProduct(_ product: Product, to name: String) throws {
@@ -90,16 +214,7 @@ final class ProductStore: ProductStoreCoordinating {
             throw ProductStoreError.measurementUnitInUse
         }
 
-        for measurementUnit in product.measurementUnits where !units.contains(measurementUnit.unit) {
-            modelContext.delete(measurementUnit)
-        }
-
-        for unit in units where !product.supports(unit) {
-            if let measurementUnit = product.addMeasurementUnit(unit) {
-                modelContext.insert(measurementUnit)
-            }
-        }
-
+        applyMeasurementUnits(units, to: product)
         try saveChanges()
     }
 
@@ -155,13 +270,6 @@ final class ProductStore: ProductStoreCoordinating {
         }
     }
 
-    func deleteAllProducts() throws {
-        try modelContext.fetch(FetchDescriptor<ProductMeasurementUnit>())
-            .forEach(modelContext.delete)
-        try modelContext.fetch(Self.productsDescriptor)
-            .forEach(modelContext.delete)
-    }
-
     private static var productsDescriptor: FetchDescriptor<Product> {
         FetchDescriptor(
             sortBy: [SortDescriptor(\Product.normalizedName)]
@@ -176,6 +284,21 @@ final class ProductStore: ProductStoreCoordinating {
         descriptor.fetchLimit = 1
 
         return try modelContext.fetch(descriptor).first
+    }
+
+    private func applyMeasurementUnits(
+        _ units: Set<MeasurementUnit>,
+        to product: Product
+    ) {
+        for measurementUnit in product.measurementUnits where !units.contains(measurementUnit.unit) {
+            modelContext.delete(measurementUnit)
+        }
+
+        for unit in units where !product.supports(unit) {
+            if let measurementUnit = product.addMeasurementUnit(unit) {
+                modelContext.insert(measurementUnit)
+            }
+        }
     }
 
     private func saveChanges() throws {

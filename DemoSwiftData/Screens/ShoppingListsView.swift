@@ -8,8 +8,16 @@
 import SwiftUI
 
 struct ShoppingListsView: View {
+    private enum Entity: String {
+        case shoppingList = "ShoppingList"
+        case product = "Product"
+        case productMeasurementUnit = "ProductMeasurementUnit"
+        case shoppingListItem = "ShoppingListItem"
+    }
+
     @State private var observed: ShoppingListsObserved
     @State private var isShowingResetConfirmation = false
+    @State private var pendingDeletion: Entity?
 
     init(
         shoppingStore: any ShoppingStoreProtocol,
@@ -30,8 +38,16 @@ struct ShoppingListsView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     header
-                    consoleButtons
+                    crudSections
                     resetDemoDataButton
+
+                    if let statusMessage = observed.statusMessage {
+                        Label(statusMessage, systemImage: "checkmark.circle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.green)
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity)
+                    }
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 20)
@@ -61,6 +77,20 @@ struct ShoppingListsView: View {
             } message: {
                 Text("Все текущие записи будут удалены и заменены начальными демо-данными.")
             }
+            .confirmationDialog(
+                "Удалить запись \(pendingDeletion?.rawValue ?? "")?",
+                isPresented: isShowingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Удалить", role: .destructive) {
+                    performPendingDeletion()
+                }
+                Button("Отмена", role: .cancel) {
+                    pendingDeletion = nil
+                }
+            } message: {
+                Text("Будет удалена подходящая запись выбранной таблицы. Связанные данные обрабатываются по правилам SwiftData.")
+            }
         }
     }
 
@@ -76,13 +106,6 @@ struct ShoppingListsView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
             .accessibilityHint("Удаляет текущие записи и возвращает начальные демо-данные")
-
-            if let resetStatusMessage = observed.resetStatusMessage {
-                Label(resetStatusMessage, systemImage: "checkmark.circle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.green)
-                    .transition(.opacity)
-            }
         }
     }
 
@@ -96,53 +119,68 @@ struct ShoppingListsView: View {
             Text("Содержимое хранилища")
                 .font(.title2.bold())
 
-            Text("Нажмите кнопку, чтобы вывести выбранную таблицу в консоль Xcode.")
+            Text("Выполняйте CRUD-операции с таблицами SwiftData. Результат каждой операции выводится в консоль Xcode.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
     }
 
-    private var consoleButtons: some View {
-        VStack(spacing: 12) {
-            consoleButton(
+    private var crudSections: some View {
+        VStack(spacing: 16) {
+            crudSection(
                 title: "ShoppingList",
                 subtitle: "Списки покупок",
                 systemImage: "list.bullet.rectangle.portrait.fill",
-                action: observed.printShoppingLists
+                read: observed.printShoppingLists,
+                create: observed.createShoppingList,
+                update: observed.updateShoppingList,
+                delete: { pendingDeletion = .shoppingList }
             )
 
-            consoleButton(
+            crudSection(
                 title: "Product",
                 subtitle: "Каталог товаров",
                 systemImage: "shippingbox.fill",
-                action: observed.printProducts
+                read: observed.printProducts,
+                create: observed.createProduct,
+                update: observed.updateProduct,
+                delete: { pendingDeletion = .product }
             )
 
-            consoleButton(
+            crudSection(
                 title: "ProductMeasurementUnit",
                 subtitle: "Допустимые единицы товаров",
                 systemImage: "ruler.fill",
-                action: observed.printProductMeasurementUnits
+                read: observed.printProductMeasurementUnits,
+                create: observed.createProductMeasurementUnit,
+                update: observed.updateProductMeasurementUnit,
+                delete: { pendingDeletion = .productMeasurementUnit }
             )
 
-            consoleButton(
+            crudSection(
                 title: "ShoppingListItem",
                 subtitle: "Позиции списков и их связи",
                 systemImage: "cart.fill.badge.plus",
-                action: observed.printShoppingListItems
+                read: observed.printShoppingListItems,
+                create: observed.createShoppingListItem,
+                update: observed.updateShoppingListItem,
+                delete: { pendingDeletion = .shoppingListItem }
             )
         }
     }
 
-    private func consoleButton(
+    private func crudSection(
         title: String,
         subtitle: String,
         systemImage: String,
-        action: @escaping () -> Void
+        read: @escaping () -> Void,
+        create: @escaping () -> Void,
+        update: @escaping () -> Void,
+        delete: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
                 Image(systemName: systemImage)
                     .font(.title2)
                     .frame(width: 32)
@@ -155,19 +193,57 @@ struct ShoppingListsView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "terminal.fill")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
             }
-            .contentShape(.rect)
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10)
+                ],
+                spacing: 10
+            ) {
+                crudButton(
+                    title: "Получить",
+                    systemImage: "terminal.fill",
+                    action: read
+                )
+                crudButton(
+                    title: "Создать",
+                    systemImage: "plus.circle.fill",
+                    action: create
+                )
+                crudButton(
+                    title: "Обновить",
+                    systemImage: "pencil.circle.fill",
+                    action: update
+                )
+                crudButton(
+                    title: "Удалить",
+                    systemImage: "trash.fill",
+                    role: .destructive,
+                    action: delete
+                )
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(16)
+        .background(.regularMaterial, in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func crudButton(
+        title: String,
+        systemImage: String,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
         .controlSize(.large)
-        .frame(maxWidth: .infinity)
-        .accessibilityLabel("Вывести таблицу \(title) в консоль")
     }
 
     private var isShowingError: Binding<Bool> {
@@ -179,6 +255,34 @@ struct ShoppingListsView: View {
                 }
             }
         )
+    }
+
+    private var isShowingDeleteConfirmation: Binding<Bool> {
+        Binding(
+            get: { pendingDeletion != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingDeletion = nil
+                }
+            }
+        )
+    }
+
+    private func performPendingDeletion() {
+        defer { pendingDeletion = nil }
+
+        switch pendingDeletion {
+        case .shoppingList:
+            observed.deleteShoppingList()
+        case .product:
+            observed.deleteProduct()
+        case .productMeasurementUnit:
+            observed.deleteProductMeasurementUnit()
+        case .shoppingListItem:
+            observed.deleteShoppingListItem()
+        case nil:
+            break
+        }
     }
 }
 
