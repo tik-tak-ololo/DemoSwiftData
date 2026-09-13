@@ -256,6 +256,7 @@ Stores удерживают и контейнер, и контекст. Это �
 
 - `ShoppingList` сортируется по имени;
 - `ShoppingListItem` — по дате создания;
+- отдельный запрос `ShoppingListItem` фильтрует позиции по `persistentModelID` списка и сортирует их по имени связанного `Product`;
 - `Product` — по нормализованному имени;
 - `#Predicate<Product>` используется для поиска товара по `normalizedName`;
 - `fetchLimit = 1` ограничивает поиск одним результатом.

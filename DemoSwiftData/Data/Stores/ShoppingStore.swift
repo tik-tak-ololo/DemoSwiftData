@@ -33,6 +33,21 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         try modelContext.fetch(Self.shoppingListItemsDescriptor)
     }
 
+    func fetchShoppingListItems(
+        for shoppingList: ShoppingList
+    ) throws -> [ShoppingListItem] {
+        let shoppingListID = shoppingList.persistentModelID
+        let descriptor = FetchDescriptor<ShoppingListItem>(
+            predicate: #Predicate { item in
+                item.shoppingList?.persistentModelID == shoppingListID
+            },
+            sortBy: [
+                SortDescriptor(\ShoppingListItem.product?.name)
+            ]
+        )
+        return try modelContext.fetch(descriptor)
+    }
+
     @discardableResult
     func createList(
         named name: String,

@@ -12,6 +12,7 @@ import Foundation
 protocol ShoppingStoreProtocol: AnyObject {
     func fetchShoppingLists() throws -> [ShoppingList]
     func fetchShoppingListItems() throws -> [ShoppingListItem]
+    func fetchShoppingListItems(for shoppingList: ShoppingList) throws -> [ShoppingListItem]
 
     @discardableResult
     func createList(

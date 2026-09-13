@@ -165,7 +165,8 @@ struct ShoppingListsView: View {
                 read: observed.printShoppingListItems,
                 create: observed.createShoppingListItem,
                 update: observed.updateShoppingListItem,
-                delete: { pendingDeletion = .shoppingListItem }
+                delete: { pendingDeletion = .shoppingListItem },
+                filteredRead: observed.printShoppingListItemsForFirstList
             )
         }
     }
@@ -177,7 +178,8 @@ struct ShoppingListsView: View {
         read: @escaping () -> Void,
         create: @escaping () -> Void,
         update: @escaping () -> Void,
-        delete: @escaping () -> Void
+        delete: @escaping () -> Void,
+        filteredRead: (() -> Void)? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
@@ -223,6 +225,13 @@ struct ShoppingListsView: View {
                     role: .destructive,
                     action: delete
                 )
+                if let filteredRead {
+                    crudButton(
+                        title: "Получить по списку",
+                        systemImage: "line.3.horizontal.decrease.circle.fill",
+                        action: filteredRead
+                    )
+                }
             }
         }
         .frame(maxWidth: .infinity)

@@ -110,18 +110,23 @@ final class ShoppingListsObserved {
 
     func printShoppingListItems() {
         performConsoleOutput {
-            let rows = try shoppingStore.fetchShoppingListItems().map { item in
-                [
-                    "id: \(item.id)",
-                    "quantity: \(item.quantity)",
-                    "unit: \(item.unit.rawValue)",
-                    "isPurchased: \(item.isPurchased)",
-                    "createdAt: \(Self.format(item.createdAt))",
-                    "shoppingList: \(item.shoppingList?.name ?? "nil")",
-                    "product: \(Self.productDescription(item.product))"
-                ]
-            }
+            let rows = try shoppingStore.fetchShoppingListItems()
+                .map(Self.shoppingListItemFields)
             return Self.makeTableDump(tableName: "ShoppingListItem", rows: rows)
+        }
+    }
+
+    func printShoppingListItemsForFirstList() {
+        performConsoleOutput {
+            guard let shoppingList = try shoppingStore.fetchShoppingLists().first else {
+                throw CRUDDemoError.noRecords(entityName: "ShoppingList")
+            }
+            let rows = try shoppingStore.fetchShoppingListItems(for: shoppingList)
+                .map(Self.shoppingListItemFields)
+            return Self.makeTableDump(
+                tableName: "ShoppingListItem · список «\(shoppingList.name)» · сортировка по Product.name",
+                rows: rows
+            )
         }
     }
 
@@ -395,6 +400,18 @@ final class ShoppingListsObserved {
     private static func productDescription(_ product: Product?) -> String {
         guard let product else { return "nil" }
         return product.name
+    }
+
+    private static func shoppingListItemFields(_ item: ShoppingListItem) -> [String] {
+        [
+            "id: \(item.id)",
+            "quantity: \(item.quantity)",
+            "unit: \(item.unit.rawValue)",
+            "isPurchased: \(item.isPurchased)",
+            "createdAt: \(format(item.createdAt))",
+            "shoppingList: \(item.shoppingList?.name ?? "nil")",
+            "product: \(productDescription(item.product))"
+        ]
     }
 
     private static func measurementUnitsDescription(_ product: Product) -> String {
