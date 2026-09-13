@@ -13,7 +13,6 @@ private enum CRUDDemoError: LocalizedError {
     case noProductForMeasurementUnit
     case noAvailableMeasurementUnit
     case noDeletableMeasurementUnit
-    case itemWithoutProduct
 
     var errorDescription: String? {
         switch self {
@@ -25,8 +24,6 @@ private enum CRUDDemoError: LocalizedError {
             "У всех подходящих товаров уже добавлены все единицы измерения."
         case .noDeletableMeasurementUnit:
             "Нет единицы, которую можно безопасно удалить: используемые и последние единицы защищены."
-        case .itemWithoutProduct:
-            "У выбранной позиции отсутствует связанный товар."
         }
     }
 }
@@ -324,9 +321,7 @@ final class ShoppingListsObserved {
             guard let item = try shoppingStore.fetchShoppingListItems().last else {
                 throw CRUDDemoError.noRecords(entityName: "ShoppingListItem")
             }
-            guard let product = item.product else {
-                throw CRUDDemoError.itemWithoutProduct
-            }
+            let product = item.product
 
             let quantityResult = item.quantity.addingReportingOverflow(1)
             guard !quantityResult.overflow else {
@@ -349,7 +344,7 @@ final class ShoppingListsObserved {
                 throw CRUDDemoError.noRecords(entityName: "ShoppingListItem")
             }
 
-            let productName = item.product?.name ?? "без товара"
+            let productName = item.product.name
             try shoppingStore.deleteItem(item)
             return "DELETE ShoppingListItem: «\(productName)»"
         }
@@ -397,11 +392,6 @@ final class ShoppingListsObserved {
             : "\(header)\n\(body)\n===================="
     }
 
-    private static func productDescription(_ product: Product?) -> String {
-        guard let product else { return "nil" }
-        return product.name
-    }
-
     private static func shoppingListItemFields(_ item: ShoppingListItem) -> [String] {
         [
             "id: \(item.id)",
@@ -409,8 +399,8 @@ final class ShoppingListsObserved {
             "unit: \(item.unit.rawValue)",
             "isPurchased: \(item.isPurchased)",
             "createdAt: \(format(item.createdAt))",
-            "shoppingList: \(item.shoppingList?.name ?? "nil")",
-            "product: \(productDescription(item.product))"
+            "shoppingList: \(item.shoppingList.name)",
+            "product: \(item.product.name)"
         ]
     }
 

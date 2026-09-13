@@ -12,13 +12,22 @@ import SwiftData
 /// Количество, единица измерения и статус покупки относятся к позиции списка.
 @Model
 final class ShoppingListItem {
+    /// Прикладной уникальный идентификатор позиции.
     @Attribute(.unique) private(set) var id: UUID
+    /// Количество товара в позиции.
     private(set) var quantity: Int
+    /// Выбранная для количества единица измерения.
     private(set) var unit: MeasurementUnit
+    /// Признак того, что товар уже куплен.
+    @Attribute(originalName: "is_purchased")
     private(set) var isPurchased: Bool
+    /// Дата и время создания позиции.
+    @Attribute(originalName: "created_at")
     private(set) var createdAt: Date
-    private(set) var shoppingList: ShoppingList?
-    private(set) var product: Product?
+    /// Список покупок, которому принадлежит позиция.
+    private(set) var shoppingList: ShoppingList
+    /// Товар, добавленный в позицию.
+    private(set) var product: Product
 
     init(
         id: UUID = UUID(),
@@ -63,7 +72,6 @@ final class ShoppingListItem {
     }
 
     func changeUnit(to unit: MeasurementUnit) throws {
-        guard let product else { return }
         try ShoppingDomainValidation.unit(unit, isSupportedBy: product)
         self.unit = unit
     }

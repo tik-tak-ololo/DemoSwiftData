@@ -28,7 +28,9 @@ enum MeasurementUnit: String, CaseIterable, Codable {
 /// и миллилитры. При удалении товара его единицы удаляются каскадно.
 @Model
 final class ProductMeasurementUnit {
+    /// Единица измерения, поддерживаемая товаром.
     private(set) var unit: MeasurementUnit
+    /// Товар, которому доступна эта единица измерения.
     private(set) var product: Product?
 
     init(unit: MeasurementUnit, product: Product) {

@@ -10,10 +10,15 @@ import SwiftData
 
 @Model
 final class Product {
+    /// Отображаемое название товара.
     private(set) var name: String
-    @Attribute(.unique) private(set) var normalizedName: String
+    /// Нормализованное название для поиска и проверки уникальности.
+    @Attribute(.unique, originalName: "normalized_name")
+    private(set) var normalizedName: String
+    /// Позиции списков, в которых используется товар.
     @Relationship(deleteRule: .cascade, inverse: \ShoppingListItem.product)
     private(set) var listItems: [ShoppingListItem]
+    /// Допустимые для товара единицы измерения.
     @Relationship(deleteRule: .cascade, inverse: \ProductMeasurementUnit.product)
     private(set) var measurementUnits: [ProductMeasurementUnit]
 

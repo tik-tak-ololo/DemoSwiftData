@@ -39,10 +39,10 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         let shoppingListID = shoppingList.persistentModelID
         let descriptor = FetchDescriptor<ShoppingListItem>(
             predicate: #Predicate { item in
-                item.shoppingList?.persistentModelID == shoppingListID
+                item.shoppingList.persistentModelID == shoppingListID
             },
             sortBy: [
-                SortDescriptor(\ShoppingListItem.product?.name)
+                SortDescriptor(\ShoppingListItem.product.name)
             ]
         )
         return try modelContext.fetch(descriptor)
@@ -100,7 +100,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
         let normalizedName = product.normalizedName
         if let existingItem = shoppingList.items.first(where: {
-            $0.product?.normalizedName == normalizedName && $0.unit == unit
+            $0.product.normalizedName == normalizedName && $0.unit == unit
         }) {
             try existingItem.increaseQuantity(by: validatedQuantity)
             try saveChanges()
@@ -133,9 +133,9 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
         try productStore.validate(unit, for: product)
 
         let normalizedName = product.normalizedName
-        if let existingItem = item.shoppingList?.items.first(where: {
+        if let existingItem = item.shoppingList.items.first(where: {
             $0 !== item &&
-                $0.product?.normalizedName == normalizedName &&
+                $0.product.normalizedName == normalizedName &&
                 $0.unit == unit
         }) {
             try existingItem.increaseQuantity(by: validatedQuantity)

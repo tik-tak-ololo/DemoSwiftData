@@ -39,10 +39,16 @@ enum ShoppingListIconDesign: String, CaseIterable, Codable {
 
 @Model
 final class ShoppingList {
+    /// Название списка покупок.
     private(set) var name: String
+    /// Цвет значка списка.
+    @Attribute(originalName: "icon_color")
     private(set) var iconColor: ShoppingListIconColor
+    /// Системное имя изображения для значка списка.
+    @Attribute(originalName: "icon_design")
     private(set) var iconDesign: ShoppingListIconDesign
 
+    /// Позиции, добавленные в этот список.
     @Relationship(deleteRule: .cascade, inverse: \ShoppingListItem.shoppingList)
     private(set) var items: [ShoppingListItem]
 
