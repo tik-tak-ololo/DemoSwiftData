@@ -219,9 +219,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     private static var shoppingListItemsDescriptor: FetchDescriptor<ShoppingListItem> {
-        FetchDescriptor(
-            sortBy: [SortDescriptor(\ShoppingListItem.createdAt)]
-        )
+        FetchDescriptor()
     }
 
     private func insert(

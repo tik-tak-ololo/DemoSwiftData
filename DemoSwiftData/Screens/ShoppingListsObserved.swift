@@ -398,7 +398,6 @@ final class ShoppingListsObserved {
             "quantity: \(item.quantity)",
             "unit: \(item.unit.rawValue)",
             "isPurchased: \(item.isPurchased)",
-            "createdAt: \(format(item.createdAt))",
             "shoppingList: \(item.shoppingList.name)",
             "product: \(item.product.name)"
         ]
@@ -409,10 +408,6 @@ final class ShoppingListsObserved {
             .map(\.unit.rawValue)
             .sorted()
             .joined(separator: ", ")
-    }
-
-    private static func format(_ date: Date) -> String {
-        date.formatted(.iso8601)
     }
 
     private static func uniqueName(

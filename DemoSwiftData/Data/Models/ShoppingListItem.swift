@@ -21,9 +21,6 @@ final class ShoppingListItem {
     /// Признак того, что товар уже куплен.
     @Attribute(originalName: "is_purchased")
     private(set) var isPurchased: Bool
-    /// Дата и время создания позиции.
-    @Attribute(originalName: "created_at")
-    private(set) var createdAt: Date
     /// Список покупок, которому принадлежит позиция.
     private(set) var shoppingList: ShoppingList
     /// Товар, добавленный в позицию.
@@ -34,7 +31,6 @@ final class ShoppingListItem {
         quantity: Int,
         unit: MeasurementUnit,
         isPurchased: Bool = false,
-        createdAt: Date = .now,
         shoppingList: ShoppingList,
         product: Product
     ) throws {
@@ -44,7 +40,6 @@ final class ShoppingListItem {
         self.quantity = try ShoppingDomainValidation.quantity(quantity)
         self.unit = unit
         self.isPurchased = isPurchased
-        self.createdAt = createdAt
         self.shoppingList = shoppingList
         self.product = product
     }

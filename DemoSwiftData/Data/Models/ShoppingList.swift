@@ -74,12 +74,7 @@ final class ShoppingList {
     }
 
     var sortedItems: [ShoppingListItem] {
-        items.sorted {
-            if $0.isPurchased != $1.isPurchased {
-                return !$0.isPurchased
-            }
-            return $0.createdAt < $1.createdAt
-        }
+        items.filter { !$0.isPurchased } + items.filter(\.isPurchased)
     }
 
     var purchasedItemsCount: Int {
