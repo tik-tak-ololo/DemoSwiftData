@@ -53,7 +53,6 @@ erDiagram
         int quantity
         string unit
         boolean isPurchased
-        date createdAt
     }
 
     PRODUCT {
