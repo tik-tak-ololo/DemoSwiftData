@@ -26,9 +26,11 @@
 - `ProductsView` и `ProductEditorView` — декларативный SwiftUI-интерфейс;
 - `ProductsObserved` — `@Observable`-состояние и асинхронные пользовательские операции.
 
-View не получает `ModelContext` и работает с уже реализованным persistence-слоем через
-`ProductStoreProtocol`. Загрузка и изменения запускаются из SwiftUI-задач через `async`/`await`,
-а доступ к SwiftData остаётся изолированным на `MainActor` внутри store.
+View не получает ни `ModelContext`, ни SwiftData-модели и работает с persistence-слоем через
+`ProductCatalogStoreProtocol`. Store возвращает обычный `ProductDetails`, принимает `ProductInput`
+и скрывает сопоставление UI-идентификатора с `PersistentIdentifier`. Загрузка и изменения
+запускаются из SwiftUI-задач через `async`/`await`, а доступ к SwiftData остаётся изолированным
+на `MainActor` внутри store.
 
 ## Модель данных
 
@@ -210,7 +212,7 @@ CRUDDemoView
 
 Заполняет пустое хранилище начальными списками и товарами. Он не импортирует SwiftData и общается со store через `DemoDataApplying`, поэтому описание демо-данных отделено от способа их хранения.
 
-Для production факт первого заполнения хранится в `UserDefaults`. При полном сбросе данные удаляются и добавляются заново внутри транзакции. После такого сброса `ShoppingStore` создаёт свежий `ModelContext` и передаёт его `ProductStore`, чтобы stores больше не держали уже удалённые экземпляры моделей.
+Для production факт первого заполнения хранится в `UserDefaults`. При полном сбросе каждая `ShoppingListItem` сначала удаляется в отдельном коротком `ModelContext`: это не оставляет invalidated-позиции в inverse-массивах двух cascade-родителей. После удаления связей корневые `ShoppingList` и `Product` заменяются начальными данными в чистом контексте. В завершение `ShoppingStore` создаёт свежий `ModelContext` и передаёт его `ProductStore`.
 
 Исходный код: [`DemoDataSeeder.swift`](DemoSwiftData/Data/DemoData/DemoDataSeeder.swift).
 

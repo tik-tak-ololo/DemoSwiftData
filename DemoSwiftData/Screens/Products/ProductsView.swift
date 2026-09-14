@@ -18,7 +18,7 @@ struct ProductsView: View {
     @State private var editorConfiguration: EditorConfiguration?
     @State private var productPendingDeletion: ProductListItem?
 
-    init(productStore: any ProductStoreProtocol) {
+    init(productStore: any ProductCatalogStoreProtocol) {
         _observed = State(
             initialValue: ProductsObserved(productStore: productStore)
         )

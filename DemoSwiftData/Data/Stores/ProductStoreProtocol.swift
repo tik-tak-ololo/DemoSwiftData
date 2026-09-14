@@ -10,7 +10,7 @@ import SwiftData
 
 /// Граница операций каталога товаров.
 @MainActor
-protocol ProductStoreProtocol: AnyObject {
+protocol ProductStoreProtocol: ProductCatalogStoreProtocol {
     func fetchProducts() throws -> [Product]
     func fetchProductMeasurementUnits() throws -> [ProductMeasurementUnit]
 

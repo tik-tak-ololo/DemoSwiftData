@@ -186,20 +186,52 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
 
     func replaceAllData(with data: DemoData) throws {
         try validate(data)
+
+        // ShoppingListItem связан с двумя cascade-родителями. Если удалить
+        // несколько позиций или родителей в одном контексте, inverse-массивы
+        // могут содержать уже invalidated item. Короткий контекст на одну
+        // позицию гарантирует, что следующий delete увидит свежий граф.
+        let itemIDs = try fetchShoppingListItemIDsForReset()
+        defer { replaceSharedContext() }
+        for id in itemIDs {
+            try deleteShoppingListItemForReset(id: id)
+        }
+
+        let resetContext = ModelContext(modelContainer)
+        resetContext.autosaveEnabled = false
+        useSharedContext(resetContext)
         try performTransaction {
-            try deleteAllDataInCurrentContext()
+            try deleteRootModelsInCurrentContext()
             try insert(data, productsByNormalizedName: [:])
         }
-        replaceSharedContext()
     }
 
-    private func deleteAllDataInCurrentContext() throws {
-        // Явное удаление дочерних моделей предотвращает создание некорректных
-        // relationship snapshots при удалении и повторной вставке в одной транзакции.
-        try modelContext.fetch(Self.shoppingListItemsDescriptor)
-            .forEach(modelContext.delete)
-        try modelContext.fetch(FetchDescriptor<ProductMeasurementUnit>())
-            .forEach(modelContext.delete)
+    private func fetchShoppingListItemIDsForReset() throws -> [UUID] {
+        let context = ModelContext(modelContainer)
+        context.autosaveEnabled = false
+        return try context.fetch(Self.shoppingListItemsDescriptor).map(\.id)
+    }
+
+    private func deleteShoppingListItemForReset(id: UUID) throws {
+        let context = ModelContext(modelContainer)
+        context.autosaveEnabled = false
+        useSharedContext(context)
+
+        let predicate = #Predicate<ShoppingListItem> { item in
+            item.id == id
+        }
+        var descriptor = FetchDescriptor(predicate: predicate)
+        descriptor.fetchLimit = 1
+
+        try performTransaction {
+            guard let item = try modelContext.fetch(descriptor).first else {
+                return
+            }
+            modelContext.delete(item)
+        }
+    }
+
+    private func deleteRootModelsInCurrentContext() throws {
         try modelContext.fetch(Self.shoppingListsDescriptor)
             .forEach(modelContext.delete)
         try modelContext.fetch(FetchDescriptor<Product>())
@@ -207,9 +239,12 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     }
 
     private func replaceSharedContext() {
-        let freshContext = ModelContext(modelContainer)
-        modelContext = freshContext
-        productStore.replaceModelContext(freshContext)
+        useSharedContext(ModelContext(modelContainer))
+    }
+
+    private func useSharedContext(_ context: ModelContext) {
+        modelContext = context
+        productStore.replaceModelContext(context)
     }
 
     private static var shoppingListsDescriptor: FetchDescriptor<ShoppingList> {

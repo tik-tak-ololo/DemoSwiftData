@@ -14,6 +14,7 @@ enum ProductStoreError: LocalizedError {
     case lastMeasurementUnit
     case measurementUnitInUse
     case measurementUnitWithoutProduct
+    case productNotFound
 
     var errorDescription: String? {
         switch self {
@@ -27,6 +28,8 @@ enum ProductStoreError: LocalizedError {
             "Нельзя удалить единицу измерения, которая используется в списке покупок."
         case .measurementUnitWithoutProduct:
             "У единицы измерения отсутствует связанный товар."
+        case .productNotFound:
+            "Товар больше не существует. Обновите список."
         }
     }
 }
@@ -36,6 +39,10 @@ final class ProductStore: ProductStoreCoordinating {
     /// ModelContext не владеет временем жизни контейнера, поэтому store удерживает оба объекта.
     private let modelContainer: ModelContainer
     private var modelContext: ModelContext
+    /// UI получает обычный UUID, а соответствие с PersistentIdentifier
+    /// остаётся деталью реализации store.
+    private var catalogIDByPersistentID: [PersistentIdentifier: UUID] = [:]
+    private var persistentIDByCatalogID: [UUID: PersistentIdentifier] = [:]
 
     init(
         modelContainer: ModelContainer,
@@ -47,6 +54,8 @@ final class ProductStore: ProductStoreCoordinating {
 
     func replaceModelContext(_ modelContext: ModelContext) {
         self.modelContext = modelContext
+        catalogIDByPersistentID.removeAll()
+        persistentIDByCatalogID.removeAll()
     }
 
     func fetchProducts() throws -> [Product] {
@@ -63,6 +72,92 @@ final class ProductStore: ProductStoreCoordinating {
                 }
                 return $0.unit.rawValue < $1.unit.rawValue
             }
+    }
+}
+
+// MARK: - Product catalog boundary
+
+extension ProductStore {
+    func fetchProductCatalog() throws -> [ProductDetails] {
+        let products = try fetchProducts()
+        removeCatalogIDsForDeletedProducts(products)
+
+        return products.map { product in
+            ProductDetails(
+                id: catalogID(for: product),
+                name: product.name,
+                measurementUnits: product.measurementUnits
+                    .map(\.unit)
+                    .sorted { $0.rawValue < $1.rawValue },
+                defaultMeasurementUnit: product.defaultMeasurementUnit?.unit,
+                shoppingListItemsCount: product.listItems.count
+            )
+        }
+    }
+
+    func createProduct(_ input: ProductInput) throws {
+        try createProduct(
+            named: input.name,
+            measurementUnits: input.measurementUnits,
+            defaultMeasurementUnit: input.defaultMeasurementUnit
+        )
+    }
+
+    func updateProduct(
+        id: ProductDetails.ID,
+        with input: ProductInput
+    ) throws {
+        let product = try product(forCatalogID: id)
+        try updateProduct(
+            product,
+            name: input.name,
+            measurementUnits: input.measurementUnits,
+            defaultMeasurementUnit: input.defaultMeasurementUnit
+        )
+    }
+
+    func deleteProduct(id: ProductDetails.ID) throws {
+        let product = try product(forCatalogID: id)
+        let persistentID = product.persistentModelID
+        try deleteProduct(product)
+        catalogIDByPersistentID[persistentID] = nil
+        persistentIDByCatalogID[id] = nil
+    }
+
+    private func catalogID(for product: Product) -> UUID {
+        let persistentID = product.persistentModelID
+        if let id = catalogIDByPersistentID[persistentID] {
+            return id
+        }
+
+        let id = UUID()
+        catalogIDByPersistentID[persistentID] = id
+        persistentIDByCatalogID[id] = persistentID
+        return id
+    }
+
+    private func product(forCatalogID id: UUID) throws -> Product {
+        guard let persistentID = persistentIDByCatalogID[id],
+              let product = try fetchProducts().first(where: {
+                  $0.persistentModelID == persistentID
+              }) else {
+            throw ProductStoreError.productNotFound
+        }
+        return product
+    }
+
+    private func removeCatalogIDsForDeletedProducts(_ products: [Product]) {
+        let existingPersistentIDs = Set(products.map(\.persistentModelID))
+        let deletedPersistentIDs = catalogIDByPersistentID.keys.filter {
+            !existingPersistentIDs.contains($0)
+        }
+
+        for persistentID in deletedPersistentIDs {
+            guard let catalogID = catalogIDByPersistentID.removeValue(
+                forKey: persistentID
+            ) else { continue }
+            persistentIDByCatalogID[catalogID] = nil
+        }
     }
 }
 

@@ -7,7 +7,6 @@
 
 import Foundation
 import Observation
-import SwiftData
 
 @MainActor
 @Observable
@@ -18,14 +17,13 @@ final class ProductsObserved {
     private(set) var isMutating = false
     private(set) var errorMessage: String?
 
-    @ObservationIgnored private let productStore: any ProductStoreProtocol
-    @ObservationIgnored private var storedProducts: [Product] = []
+    @ObservationIgnored private let productStore: any ProductCatalogStoreProtocol
 
     var isBusy: Bool {
         isLoading || isMutating
     }
 
-    init(productStore: any ProductStoreProtocol) {
+    init(productStore: any ProductCatalogStoreProtocol) {
         self.productStore = productStore
     }
 
@@ -56,9 +54,11 @@ final class ProductsObserved {
     ) async -> Bool {
         await performMutation {
             try productStore.createProduct(
-                named: name,
-                measurementUnits: measurementUnits,
-                defaultMeasurementUnit: defaultMeasurementUnit
+                ProductInput(
+                    name: name,
+                    measurementUnits: measurementUnits,
+                    defaultMeasurementUnit: defaultMeasurementUnit
+                )
             )
         }
     }
@@ -70,29 +70,21 @@ final class ProductsObserved {
         measurementUnits: Set<MeasurementUnit>,
         defaultMeasurementUnit: MeasurementUnit
     ) async -> Bool {
-        guard let product = storedProduct(for: item) else {
-            errorMessage = "Товар больше не существует. Обновите список."
-            return false
-        }
-
         return await performMutation {
             try productStore.updateProduct(
-                product,
-                name: name,
-                measurementUnits: measurementUnits,
-                defaultMeasurementUnit: defaultMeasurementUnit
+                id: item.id,
+                with: ProductInput(
+                    name: name,
+                    measurementUnits: measurementUnits,
+                    defaultMeasurementUnit: defaultMeasurementUnit
+                )
             )
         }
     }
 
     func deleteProduct(_ item: ProductListItem) async {
-        guard let product = storedProduct(for: item) else {
-            errorMessage = "Товар больше не существует. Обновите список."
-            return
-        }
-
         _ = await performMutation {
-            try productStore.deleteProduct(product)
+            try productStore.deleteProduct(id: item.id)
         }
     }
 
@@ -130,14 +122,7 @@ final class ProductsObserved {
     }
 
     private func reloadProductsFromStore() throws {
-        let products = try productStore.fetchProducts()
-        storedProducts = products
-        self.products = products.map(ProductListItem.init)
-    }
-
-    private func storedProduct(for item: ProductListItem) -> Product? {
-        storedProducts.first { product in
-            product.persistentModelID == item.id
-        }
+        products = try productStore.fetchProductCatalog()
+            .map(ProductListItem.init)
     }
 }

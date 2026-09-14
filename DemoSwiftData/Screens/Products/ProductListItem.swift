@@ -5,23 +5,21 @@
 //  Created by Сергей Хмелёв on 14.09.2026.
 //
 
-import SwiftData
+import Foundation
 
-/// Неизменяемый снимок SwiftData-модели, подготовленный для отображения.
+/// Неизменяемый снимок товара, подготовленный для отображения.
 struct ProductListItem: Identifiable {
-    let id: PersistentIdentifier
+    let id: UUID
     let name: String
     let measurementUnits: [MeasurementUnit]
     let defaultMeasurementUnit: MeasurementUnit?
     let shoppingListItemsCount: Int
 
-    init(product: Product) {
-        id = product.persistentModelID
-        name = product.name
-        measurementUnits = product.measurementUnits
-            .map(\.unit)
-            .sorted { $0.rawValue < $1.rawValue }
-        defaultMeasurementUnit = product.defaultMeasurementUnit?.unit
-        shoppingListItemsCount = product.listItems.count
+    init(details: ProductDetails) {
+        id = details.id
+        name = details.name
+        measurementUnits = details.measurementUnits
+        defaultMeasurementUnit = details.defaultMeasurementUnit
+        shoppingListItemsCount = details.shoppingListItemsCount
     }
 }
