@@ -64,14 +64,24 @@ final class ProductStore: ProductStoreCoordinating {
                 return $0.unit.rawValue < $1.unit.rawValue
             }
     }
+}
 
+// MARK: - Product CRUD
+
+extension ProductStore {
     @discardableResult
     func createProduct(
         named name: String,
-        measurementUnits: Set<MeasurementUnit>
+        measurementUnits: Set<MeasurementUnit>,
+        defaultMeasurementUnit: MeasurementUnit?
     ) throws -> Product {
         let trimmedName = try ShoppingDomainValidation.productName(name)
         _ = try ShoppingDomainValidation.measurementUnits(measurementUnits)
+        try validate(
+            defaultMeasurementUnit,
+            isIncludedIn: measurementUnits,
+            productName: trimmedName
+        )
         guard try findProduct(normalizedName: Product.normalize(trimmedName)) == nil else {
             throw ProductStoreError.duplicateProductName
         }
@@ -80,6 +90,9 @@ final class ProductStore: ProductStoreCoordinating {
             named: trimmedName,
             measurementUnits: measurementUnits
         )
+        if let defaultMeasurementUnit {
+            product.setDefaultMeasurementUnit(defaultMeasurementUnit)
+        }
         try saveChanges()
         return product
     }
@@ -87,10 +100,16 @@ final class ProductStore: ProductStoreCoordinating {
     func updateProduct(
         _ product: Product,
         name: String,
-        measurementUnits: Set<MeasurementUnit>
+        measurementUnits: Set<MeasurementUnit>,
+        defaultMeasurementUnit: MeasurementUnit?
     ) throws {
         let trimmedName = try ShoppingDomainValidation.productName(name)
         _ = try ShoppingDomainValidation.measurementUnits(measurementUnits)
+        try validate(
+            defaultMeasurementUnit,
+            isIncludedIn: measurementUnits,
+            productName: trimmedName
+        )
 
         let normalizedName = Product.normalize(trimmedName)
         if normalizedName != product.normalizedName,
@@ -105,6 +124,9 @@ final class ProductStore: ProductStoreCoordinating {
 
         try product.rename(to: trimmedName)
         applyMeasurementUnits(measurementUnits, to: product)
+        if let defaultMeasurementUnit {
+            product.setDefaultMeasurementUnit(defaultMeasurementUnit)
+        }
         try saveChanges()
     }
 
@@ -112,7 +134,11 @@ final class ProductStore: ProductStoreCoordinating {
         modelContext.delete(product)
         try saveChanges()
     }
+}
 
+// MARK: - Measurement unit CRUD
+
+extension ProductStore {
     @discardableResult
     func createMeasurementUnit(
         _ unit: MeasurementUnit,
@@ -209,7 +235,11 @@ final class ProductStore: ProductStoreCoordinating {
         applyMeasurementUnits(units, to: product)
         try saveChanges()
     }
+}
 
+// MARK: - ShoppingStore coordination
+
+extension ProductStore {
     func findOrCreateProduct(
         named name: String,
         initialMeasurementUnits: Set<MeasurementUnit>
@@ -275,6 +305,20 @@ final class ProductStore: ProductStoreCoordinating {
         descriptor.fetchLimit = 1
 
         return try modelContext.fetch(descriptor).first
+    }
+
+    private func validate(
+        _ defaultMeasurementUnit: MeasurementUnit?,
+        isIncludedIn measurementUnits: Set<MeasurementUnit>,
+        productName: String
+    ) throws {
+        guard let defaultMeasurementUnit else { return }
+        guard measurementUnits.contains(defaultMeasurementUnit) else {
+            throw ShoppingDomainError.unsupportedMeasurementUnit(
+                productName: productName,
+                unit: defaultMeasurementUnit
+            )
+        }
     }
 
     private func applyMeasurementUnits(

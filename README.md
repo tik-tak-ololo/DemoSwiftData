@@ -11,6 +11,25 @@
 
 Основной код persistence-слоя находится в каталоге [`DemoSwiftData/Data`](DemoSwiftData/Data).
 
+## Экран списка товаров
+
+Вкладка «Товары» показывает каталог из `ProductStoreProtocol` и поддерживает:
+
+- поиск по названию и обновление жестом pull-to-refresh;
+- создание и редактирование товара с выбором доступных и основной единиц измерения;
+- удаление с подтверждением и предупреждением о связанных позициях списков;
+- состояния первой загрузки, пустого результата, ошибки и выполняемой мутации.
+
+Фича организована по IVO:
+
+- `ProductListItem` — `Identifiable`-снимок данных для строки списка;
+- `ProductsView` и `ProductEditorView` — декларативный SwiftUI-интерфейс;
+- `ProductsObserved` — `@Observable`-состояние и асинхронные пользовательские операции.
+
+View не получает `ModelContext` и работает с уже реализованным persistence-слоем через
+`ProductStoreProtocol`. Загрузка и изменения запускаются из SwiftUI-задач через `async`/`await`,
+а доступ к SwiftData остаётся изолированным на `MainActor` внутри store.
+
 ## Модель данных
 
 Диаграмма описывает логические сущности приложения. Это не буквальная схема внутренних таблиц SQLite: SwiftData самостоятельно добавляет служебные идентификаторы и внешние ключи.
@@ -132,8 +151,8 @@ flowchart LR
     ProductStore --> Dependencies[PersistenceDependencies]
     ShoppingStore --> Dependencies
     Seeder --> Dependencies
-    Dependencies --> RootView[RootView / ShoppingListsView]
-    RootView --> Observed[ShoppingListsObserved]
+    Dependencies --> RootView[RootView / CRUDDemoView]
+    RootView --> Observed[CRUDDemoObserved]
 ```
 
 ### 1. `PersistenceBootstrap`
@@ -175,8 +194,8 @@ flowchart LR
 Обычный путь записи выглядит так:
 
 ```text
-ShoppingListsView
-  → ShoppingListsObserved
+CRUDDemoView
+  → CRUDDemoObserved
   → ShoppingStoreProtocol / ProductStoreProtocol
   → конкретный Store
   → ModelContext.insert/delete и изменение @Model
@@ -283,7 +302,7 @@ Stores удерживают и контейнер, и контекст. Это �
 | Доступ к данным | `ShoppingStore`, `ProductStore` и их протоколы | Выполнять CRUD, запросы, транзакции и сохранение |
 | Демо-данные | `DemoDataSeeder`, `DemoData` | Первичное заполнение и полный сброс |
 | Домен | четыре `@Model`, `MeasurementUnit`, `ShoppingDomainValidation` | Хранить состояние и защищать базовые правила предметной области |
-| Представление | `ShoppingListsObserved`, `ShoppingListsView` | Преобразовать действия пользователя в вызовы store и показать результат |
+| Представление | `ProductsObserved`, `ProductsView`, `CRUDDemoObserved`, `CRUDDemoView` | Преобразовать действия пользователя в вызовы store и показать результат |
 
 `ShoppingDomainValidation` проверяет непустые названия, положительное количество, наличие хотя бы одной единицы и допустимость выбранной единицы для товара. Такая проверка дополняет ограничения SwiftData: фреймворк отвечает за хранение и связи, а правила предметной области остаются в коде приложения.
 

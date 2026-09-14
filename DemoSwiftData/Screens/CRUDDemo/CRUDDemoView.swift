@@ -1,5 +1,5 @@
 //
-//  ShoppingListsView.swift
+//  CRUDDemoView.swift
 //  DemoSwiftData
 //
 //  Created by Сергей Хмелёв on 11.09.2026.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ShoppingListsView: View {
+struct CRUDDemoView: View {
     private enum Entity: String {
         case shoppingList = "ShoppingList"
         case product = "Product"
@@ -15,7 +15,7 @@ struct ShoppingListsView: View {
         case shoppingListItem = "ShoppingListItem"
     }
 
-    @State private var observed: ShoppingListsObserved
+    @State private var observed: CRUDDemoObserved
     @State private var isShowingResetConfirmation = false
     @State private var pendingDeletion: Entity?
 
@@ -25,7 +25,7 @@ struct ShoppingListsView: View {
         demoDataSeeder: any DemoDataSeeding
     ) {
         _observed = State(
-            initialValue: ShoppingListsObserved(
+            initialValue: CRUDDemoObserved(
                 shoppingStore: shoppingStore,
                 productStore: productStore,
                 demoDataSeeder: demoDataSeeder
@@ -54,7 +54,7 @@ struct ShoppingListsView: View {
                 .padding(.vertical, 32)
                 .frame(maxWidth: .infinity)
             }
-            .navigationTitle("SwiftData")
+            .navigationTitle("CRUD")
             .alert(
                 "Не удалось выполнить операцию",
                 isPresented: isShowingError
@@ -298,7 +298,7 @@ struct ShoppingListsView: View {
 #Preview {
     switch Result(catching: PersistenceFactory.makePreview) {
     case let .success(persistence):
-        ShoppingListsView(
+        CRUDDemoView(
             shoppingStore: persistence.shoppingStore,
             productStore: persistence.productStore,
             demoDataSeeder: persistence.demoDataSeeder

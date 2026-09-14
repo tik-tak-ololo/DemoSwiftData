@@ -17,12 +17,14 @@ protocol ProductStoreProtocol: AnyObject {
     @discardableResult
     func createProduct(
         named name: String,
-        measurementUnits: Set<MeasurementUnit>
+        measurementUnits: Set<MeasurementUnit>,
+        defaultMeasurementUnit: MeasurementUnit?
     ) throws -> Product
     func updateProduct(
         _ product: Product,
         name: String,
-        measurementUnits: Set<MeasurementUnit>
+        measurementUnits: Set<MeasurementUnit>,
+        defaultMeasurementUnit: MeasurementUnit?
     ) throws
     func deleteProduct(_ product: Product) throws
 
@@ -43,6 +45,33 @@ protocol ProductStoreProtocol: AnyObject {
         _ units: Set<MeasurementUnit>,
         for product: Product
     ) throws
+}
+
+extension ProductStoreProtocol {
+    @discardableResult
+    func createProduct(
+        named name: String,
+        measurementUnits: Set<MeasurementUnit>
+    ) throws -> Product {
+        try createProduct(
+            named: name,
+            measurementUnits: measurementUnits,
+            defaultMeasurementUnit: nil
+        )
+    }
+
+    func updateProduct(
+        _ product: Product,
+        name: String,
+        measurementUnits: Set<MeasurementUnit>
+    ) throws {
+        try updateProduct(
+            product,
+            name: name,
+            measurementUnits: measurementUnits,
+            defaultMeasurementUnit: nil
+        )
+    }
 }
 
 /// Операции, которые ShoppingStore использует как часть составного изменения.

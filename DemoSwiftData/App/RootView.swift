@@ -23,10 +23,20 @@ struct RootView: View {
     }
 
     var body: some View {
-        ShoppingListsView(
-            shoppingStore: shoppingStore,
-            productStore: productStore,
-            demoDataSeeder: demoDataSeeder
-        )
+        TabView {
+            CRUDDemoView(
+                shoppingStore: shoppingStore,
+                productStore: productStore,
+                demoDataSeeder: demoDataSeeder
+            )
+            .tabItem {
+                Label("CRUD", systemImage: "cylinder.split.1x2")
+            }
+
+            ProductsView(productStore: productStore)
+                .tabItem {
+                    Label("Товары", systemImage: "shippingbox")
+                }
+        }
     }
 }
