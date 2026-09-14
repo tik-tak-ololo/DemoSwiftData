@@ -22,6 +22,11 @@ final class Product {
     @Relationship(deleteRule: .cascade, inverse: \ProductMeasurementUnit.product)
     private(set) var measurementUnits: [ProductMeasurementUnit]
 
+    /// Единица измерения, назначенная товару по умолчанию.
+    var defaultMeasurementUnit: ProductMeasurementUnit? {
+        measurementUnits.first(where: \.isDefault)
+    }
+
     init(name: String, measurementUnits: [MeasurementUnit]) throws {
         let validatedName = try ShoppingDomainValidation.productName(name)
         let validatedUnits = try ShoppingDomainValidation.measurementUnits(Set(measurementUnits))
@@ -57,10 +62,25 @@ final class Product {
     func addMeasurementUnit(_ unit: MeasurementUnit) -> ProductMeasurementUnit? {
         guard !supports(unit) else { return nil }
 
+        let shouldMakeDefault = defaultMeasurementUnit == nil
         let measurementUnit = ProductMeasurementUnit(unit: unit, product: self)
         if !measurementUnits.contains(where: { $0 === measurementUnit }) {
             measurementUnits.append(measurementUnit)
         }
+        if shouldMakeDefault {
+            measurementUnit.makeDefault()
+        }
         return measurementUnit
+    }
+
+    /// Назначает одну из поддерживаемых единиц единицей по умолчанию.
+    @discardableResult
+    func setDefaultMeasurementUnit(_ unit: MeasurementUnit) -> Bool {
+        guard let measurementUnit = measurementUnits.first(where: { $0.unit == unit }) else {
+            return false
+        }
+
+        measurementUnit.makeDefault()
+        return true
     }
 }

@@ -35,6 +35,7 @@ protocol ProductStoreProtocol: AnyObject {
         _ measurementUnit: ProductMeasurementUnit,
         to unit: MeasurementUnit
     ) throws
+    func setDefaultMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws
     func deleteMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws
 
     func renameProduct(_ product: Product, to name: String) throws

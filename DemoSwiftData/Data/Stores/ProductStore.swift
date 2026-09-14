@@ -151,6 +151,15 @@ final class ProductStore: ProductStoreCoordinating {
         try saveChanges()
     }
 
+    func setDefaultMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws {
+        guard measurementUnit.product != nil else {
+            throw ProductStoreError.measurementUnitWithoutProduct
+        }
+
+        measurementUnit.makeDefault()
+        try saveChanges()
+    }
+
     func deleteMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws {
         guard let product = measurementUnit.product else {
             throw ProductStoreError.measurementUnitWithoutProduct
@@ -162,6 +171,13 @@ final class ProductStore: ProductStoreCoordinating {
             throw ProductStoreError.measurementUnitInUse
         }
 
+        if measurementUnit.isDefault {
+            product.measurementUnits
+                .filter { $0 !== measurementUnit }
+                .sorted { $0.unit.rawValue < $1.unit.rawValue }
+                .first?
+                .makeDefault()
+        }
         modelContext.delete(measurementUnit)
         try saveChanges()
     }
@@ -265,6 +281,8 @@ final class ProductStore: ProductStoreCoordinating {
         _ units: Set<MeasurementUnit>,
         to product: Product
     ) {
+        let previousDefaultUnit = product.defaultMeasurementUnit?.unit
+
         for measurementUnit in product.measurementUnits where !units.contains(measurementUnit.unit) {
             modelContext.delete(measurementUnit)
         }
@@ -273,6 +291,12 @@ final class ProductStore: ProductStoreCoordinating {
             if let measurementUnit = product.addMeasurementUnit(unit) {
                 modelContext.insert(measurementUnit)
             }
+        }
+
+        let resultingDefaultUnit = previousDefaultUnit.flatMap { units.contains($0) ? $0 : nil }
+            ?? units.sorted { $0.rawValue < $1.rawValue }.first
+        if let resultingDefaultUnit {
+            product.setDefaultMeasurementUnit(resultingDefaultUnit)
         }
     }
 

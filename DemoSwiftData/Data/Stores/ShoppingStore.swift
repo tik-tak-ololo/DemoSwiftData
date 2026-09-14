@@ -252,6 +252,7 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
                         named: itemData.name,
                         measurementUnits: requiredUnits
                     )
+                    product.setDefaultMeasurementUnit(itemData.unit)
                     productsByNormalizedName[normalizedName] = product
                 }
 

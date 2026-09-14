@@ -95,6 +95,7 @@ final class ShoppingListsObserved {
             let rows = try productStore.fetchProductMeasurementUnits().map { measurementUnit in
                 [
                     "unit: \(measurementUnit.unit.rawValue)",
+                    "isDefault: \(measurementUnit.isDefault)",
                     "product: \(measurementUnit.product?.name ?? "nil")"
                 ]
             }
@@ -405,7 +406,11 @@ final class ShoppingListsObserved {
 
     private static func measurementUnitsDescription(_ product: Product) -> String {
         product.measurementUnits
-            .map(\.unit.rawValue)
+            .map { measurementUnit in
+                measurementUnit.isDefault
+                    ? "\(measurementUnit.unit.rawValue) (по умолчанию)"
+                    : measurementUnit.unit.rawValue
+            }
             .sorted()
             .joined(separator: ", ")
     }

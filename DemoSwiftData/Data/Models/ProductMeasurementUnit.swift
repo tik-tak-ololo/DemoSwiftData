@@ -30,15 +30,28 @@ enum MeasurementUnit: String, CaseIterable, Codable {
 final class ProductMeasurementUnit {
     /// Единица измерения, поддерживаемая товаром.
     private(set) var unit: MeasurementUnit
+    /// Используется ли единица по умолчанию для связанного товара.
+    private(set) var isDefault: Bool
     /// Товар, которому доступна эта единица измерения.
     private(set) var product: Product?
 
     init(unit: MeasurementUnit, product: Product) {
         self.unit = unit
+        isDefault = false
         self.product = product
     }
 
     func changeUnit(to unit: MeasurementUnit) {
         self.unit = unit
+    }
+
+    /// Назначает текущую единицу основной и одновременно снимает признак
+    /// со всех остальных единиц того же товара.
+    func makeDefault() {
+        guard let product else { return }
+
+        for measurementUnit in product.measurementUnits {
+            measurementUnit.isDefault = measurementUnit === self
+        }
     }
 }
