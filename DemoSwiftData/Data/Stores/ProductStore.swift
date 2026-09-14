@@ -13,7 +13,6 @@ enum ProductStoreError: LocalizedError {
     case duplicateMeasurementUnit
     case lastMeasurementUnit
     case measurementUnitInUse
-    case measurementUnitWithoutProduct
     case productNotFound
 
     var errorDescription: String? {
@@ -26,8 +25,6 @@ enum ProductStoreError: LocalizedError {
             "У товара должна остаться хотя бы одна единица измерения."
         case .measurementUnitInUse:
             "Нельзя удалить единицу измерения, которая используется в списке покупок."
-        case .measurementUnitWithoutProduct:
-            "У единицы измерения отсутствует связанный товар."
         case .productNotFound:
             "Товар больше не существует. Обновите список."
         }
@@ -65,8 +62,8 @@ final class ProductStore: ProductStoreCoordinating {
     func fetchProductMeasurementUnits() throws -> [ProductMeasurementUnit] {
         try modelContext.fetch(FetchDescriptor<ProductMeasurementUnit>())
             .sorted {
-                let firstProduct = $0.product?.normalizedName ?? ""
-                let secondProduct = $1.product?.normalizedName ?? ""
+                let firstProduct = $0.product.normalizedName
+                let secondProduct = $1.product.normalizedName
                 if firstProduct != secondProduct {
                     return firstProduct < secondProduct
                 }
@@ -257,9 +254,7 @@ extension ProductStore {
     ) throws {
         guard measurementUnit.unit != unit else { return }
 
-        guard let product = measurementUnit.product else {
-            throw ProductStoreError.measurementUnitWithoutProduct
-        }
+        let product = measurementUnit.product
         guard !product.supports(unit) else {
             throw ProductStoreError.duplicateMeasurementUnit
         }
@@ -273,18 +268,12 @@ extension ProductStore {
     }
 
     func setDefaultMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws {
-        guard measurementUnit.product != nil else {
-            throw ProductStoreError.measurementUnitWithoutProduct
-        }
-
         measurementUnit.makeDefault()
         try saveChanges()
     }
 
     func deleteMeasurementUnit(_ measurementUnit: ProductMeasurementUnit) throws {
-        guard let product = measurementUnit.product else {
-            throw ProductStoreError.measurementUnitWithoutProduct
-        }
+        let product = measurementUnit.product
         guard product.measurementUnits.count > 1 else {
             throw ProductStoreError.lastMeasurementUnit
         }

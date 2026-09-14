@@ -187,14 +187,17 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
     func replaceAllData(with data: DemoData) throws {
         try validate(data)
 
-        // ShoppingListItem связан с двумя cascade-родителями. Если удалить
-        // несколько позиций или родителей в одном контексте, inverse-массивы
-        // могут содержать уже invalidated item. Короткий контекст на одну
-        // позицию гарантирует, что следующий delete увидит свежий граф.
+        // При массовом удалении cascade-связей inverse-массивы могут содержать
+        // уже invalidated модели. Короткий контекст на одну дочернюю модель
+        // гарантирует, что следующий delete увидит свежий граф.
         let itemIDs = try fetchShoppingListItemIDsForReset()
         defer { replaceSharedContext() }
         for id in itemIDs {
             try deleteShoppingListItemForReset(id: id)
+        }
+        let measurementUnitIDs = try fetchProductMeasurementUnitIDsForReset()
+        for id in measurementUnitIDs {
+            try deleteProductMeasurementUnitForReset(id: id)
         }
 
         let resetContext = ModelContext(modelContainer)
@@ -228,6 +231,29 @@ final class ShoppingStore: ShoppingStoreProtocol, DemoDataApplying {
                 return
             }
             modelContext.delete(item)
+        }
+    }
+
+    private func fetchProductMeasurementUnitIDsForReset() throws -> [PersistentIdentifier] {
+        let context = ModelContext(modelContainer)
+        context.autosaveEnabled = false
+        return try context.fetch(FetchDescriptor<ProductMeasurementUnit>())
+            .map(\.persistentModelID)
+    }
+
+    private func deleteProductMeasurementUnitForReset(
+        id: PersistentIdentifier
+    ) throws {
+        let context = ModelContext(modelContainer)
+        context.autosaveEnabled = false
+        useSharedContext(context)
+
+        try performTransaction {
+            let model = modelContext.model(for: id)
+            guard let measurementUnit = model as? ProductMeasurementUnit else {
+                return
+            }
+            modelContext.delete(measurementUnit)
         }
     }
 

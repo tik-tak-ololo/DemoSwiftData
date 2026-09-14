@@ -96,7 +96,7 @@ final class CRUDDemoObserved {
                 [
                     "unit: \(measurementUnit.unit.rawValue)",
                     "isDefault: \(measurementUnit.isDefault)",
-                    "product: \(measurementUnit.product?.name ?? "nil")"
+                    "product: \(measurementUnit.product.name)"
                 ]
             }
             return Self.makeTableDump(
@@ -259,7 +259,7 @@ final class CRUDDemoObserved {
                 throw CRUDDemoError.noRecords(entityName: "ProductMeasurementUnit")
             }
             guard let selection = measurementUnits.lazy.compactMap({ measurementUnit -> (ProductMeasurementUnit, MeasurementUnit)? in
-                guard let product = measurementUnit.product else { return nil }
+                let product = measurementUnit.product
                 return MeasurementUnit.allCases
                     .first(where: { !product.supports($0) })
                     .map { (measurementUnit, $0) }
@@ -269,7 +269,7 @@ final class CRUDDemoObserved {
 
             let previousUnit = selection.0.unit
             try productStore.updateMeasurementUnit(selection.0, to: selection.1)
-            let productName = selection.0.product?.name ?? "без товара"
+            let productName = selection.0.product.name
             return "UPDATE ProductMeasurementUnit: \(productName), \(previousUnit.rawValue) → \(selection.1.rawValue)"
         }
     }
@@ -278,7 +278,7 @@ final class CRUDDemoObserved {
         performMutation {
             let measurementUnits = try productStore.fetchProductMeasurementUnits()
             guard let measurementUnit = measurementUnits.first(where: { measurementUnit in
-                guard let product = measurementUnit.product else { return false }
+                let product = measurementUnit.product
                 return product.measurementUnits.count > 1 &&
                     !product.listItems.contains(where: { item in
                         item.unit == measurementUnit.unit
@@ -287,7 +287,7 @@ final class CRUDDemoObserved {
                 throw CRUDDemoError.noDeletableMeasurementUnit
             }
 
-            let productName = measurementUnit.product?.name ?? "без товара"
+            let productName = measurementUnit.product.name
             let unit = measurementUnit.unit
             try productStore.deleteMeasurementUnit(measurementUnit)
             return "DELETE ProductMeasurementUnit: \(productName) — \(unit.rawValue)"
